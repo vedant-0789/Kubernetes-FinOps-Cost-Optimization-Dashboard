@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite
+*.db
+finops.db
+
+# Caches
+.cache
+.pytest_cache/
+
+# Node dependencies & build outputs
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
