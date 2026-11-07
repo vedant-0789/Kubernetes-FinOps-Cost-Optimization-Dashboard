@@ -1,0 +1,67 @@
+# Full stack on one machine: TimescaleDB + migrations + API + worker + UI.
+#   docker compose -f deploy/docker-compose.yml up --build
+# UI: http://localhost:8080   API docs: http://localhost:8000/docs
+name: kubefinops
+
+x-backend: &backend
+  build: ../backend
+  image: ghcr.io/vedant-0789/kubefinops-server:dev
+  env_file: [.env.example]
+  environment:
+    FINOPS_DATABASE_URL: postgresql+psycopg://finops:${POSTGRES_PASSWORD:-finops}@db:5432/finops
+  depends_on:
+    db: { condition: service_healthy }
+
+services:
+  db:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_USER: finops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finops}
+      POSTGRES_DB: finops
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finops -d finops"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports: ["5432:5432"]
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    <<: *backend
+    environment:
+      FINOPS_DATABASE_URL: postgresql+psycopg://finops:${POSTGRES_PASSWORD:-finops}@db:5432/finops
+      FINOPS_AUTO_MIGRATE: "false"
+      FINOPS_RUN_SCHEDULER_IN_API: "false"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    ports: ["8000:8000"]
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      FINOPS_DATABASE_URL: postgresql+psycopg://finops:${POSTGRES_PASSWORD:-finops}@db:5432/finops
+      FINOPS_SEED_DEMO_DATA: "false"
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/metrics')"]
+      interval: 15s
+
+  ui:
+    build: ../frontend
+    image: ghcr.io/vedant-0789/kubefinops-ui:dev
+    environment:
+      FINOPS_API_UPSTREAM: http://api:8000
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["8080:8080"]
+
+volumes:
+  db-data:

@@ -1,12 +1,13 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from datetime import datetime
+
+from pydantic import BaseModel, Field
+
 
 class SystemSettingSchema(BaseModel):
     key: str
     value: str
-    description: Optional[str] = None
-    updated_at: Optional[datetime] = None
+    description: str | None = None
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -94,7 +95,7 @@ class ActionLogSchema(BaseModel):
     status: str
     applied_by: str
     timestamp: datetime
-    details: Optional[str] = None
+    details: str | None = None
 
     class Config:
         from_attributes = True

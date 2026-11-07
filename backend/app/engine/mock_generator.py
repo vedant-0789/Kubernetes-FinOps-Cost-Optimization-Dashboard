@@ -1,7 +1,9 @@
-import random
 import datetime
+import random
+
 from sqlalchemy.orm import Session
-from app.db.models import MetricsSnapshot, ZombieWorkload, Recommendation, ActionLog, SystemSetting
+
+from app.db.models import ActionLog, MetricsSnapshot, Recommendation, SystemSetting, ZombieWorkload
 from app.engine.cost_calculator import CostCalculator
 
 NAMESPACES = [
@@ -57,7 +59,7 @@ POD_PRESETS = [
 
 class MockDataGenerator:
     """
-    Seeds database with initial mock settings, pod metric snapshots, 
+    Seeds database with initial mock settings, pod metric snapshots,
     30 days of cost trends, zombie workloads, recommendations, and sample audit history.
     """
 
@@ -68,7 +70,7 @@ class MockDataGenerator:
             return
 
         print("Seeding initial FinOps mock data...")
-        
+
         # 1. Seed System Settings
         default_settings = [
             SystemSetting(key="cpu_hourly_rate", value="0.048", description="Cost per vCPU hour ($)"),
@@ -109,7 +111,7 @@ class MockDataGenerator:
                 efficiency_pct=cost_info["efficiency_pct"]
             )
             db.add(snap)
-            
+
         # 3. Seed 30 Days of Historical Snapshots for Trend Charting
         for day in range(30, 0, -1):
             historical_time = now - datetime.timedelta(days=day)

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from app.db.database import get_db
-from app.db.models import MetricsSnapshot, ZombieWorkload, Recommendation, ActionLog
+from app.db.models import ActionLog, MetricsSnapshot, Recommendation, ZombieWorkload
 from app.engine.mock_generator import NAMESPACES
 
-router = APIRouter(prefix="/api/lifecycle", tags=["FinOps Lifecycle"])
+router = APIRouter(prefix="/lifecycle", tags=["FinOps Lifecycle"])
 
 FINOPS_STAGES = [
     {"id": "Observe", "title": "1. Observe", "desc": "Ingest real-time cAdvisor & Prometheus metrics across all nodes/pods."},
@@ -19,30 +20,30 @@ FINOPS_STAGES = [
 @router.get("")
 def get_lifecycle_summary(db: Session = Depends(get_db)):
     latest_snaps = db.query(MetricsSnapshot).order_by(MetricsSnapshot.timestamp.desc()).all()
-    
+
     pod_map = {}
     for s in latest_snaps:
         k = f"{s.namespace}/{s.pod_name}"
         if k not in pod_map:
             pod_map[k] = s
-            
-    stage_ns_map = {ns["name"]: ns["stage"] for ns in NAMESPACES}
-    
+
+    {ns["name"]: ns["stage"] for ns in NAMESPACES}
+
     active_zombies = db.query(ZombieWorkload).filter(ZombieWorkload.status == "ACTIVE").count()
     active_recs = db.query(Recommendation).filter(Recommendation.status == "PENDING").count()
     applied_actions = db.query(ActionLog).filter(ActionLog.status == "SUCCESS").count()
-    
+
     stage_data = []
     for stage in FINOPS_STAGES:
         s_id = stage["id"]
-        
+
         # Matching namespaces
         ns_list = [ns["name"] for ns in NAMESPACES if ns["stage"] == s_id]
-        
+
         # Pods in these namespaces
         matching_pods = [p for p in pod_map.values() if p.namespace in ns_list]
         cost_sum = sum(p.monthly_cost for p in matching_pods)
-        
+
         badge_text = f"{len(ns_list)} Namespaces"
         if s_id == "Detect":
             badge_text = f"{active_zombies} Zombies Flagged"
@@ -50,7 +51,7 @@ def get_lifecycle_summary(db: Session = Depends(get_db)):
             badge_text = f"{active_recs} Active Recs"
         elif s_id == "Optimize" or s_id == "Verify":
             badge_text = f"{applied_actions} Remediations Executed"
-            
+
         stage_data.append({
             "stage_id": s_id,
             "title": stage["title"],
@@ -60,7 +61,7 @@ def get_lifecycle_summary(db: Session = Depends(get_db)):
             "monthly_cost": round(cost_sum, 2),
             "badge": badge_text
         })
-        
+
     return {
         "stages": stage_data,
         "total_active_workloads": len(pod_map)

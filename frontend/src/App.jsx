@@ -11,7 +11,7 @@ import ActionHistoryPage from './pages/ActionHistoryPage';
 import LifecyclePage from './pages/LifecyclePage';
 import SettingsPage from './pages/SettingsPage';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');

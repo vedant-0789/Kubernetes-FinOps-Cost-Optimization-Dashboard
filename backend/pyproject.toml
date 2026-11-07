@@ -1,0 +1,25 @@
+[project]
+name = "kubefinops-server"
+version = "2.0.0.dev0"
+description = "Kubernetes FinOps platform: cost allocation, waste detection, SLO-aware right-sizing and safe remediation"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["B008"]  # FastAPI's Depends() in defaults is idiomatic
+
+[tool.ruff.lint.per-file-ignores]
+# v1 modules with long data/f-string lines; replaced by the v2 engines in M1/M3.
+"app/engine/{k8s_client,mock_generator}.py" = ["E501"]
+"app/routers/{lifecycle,namespaces,recommendations,zombies}.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -22,3 +22,9 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+# Tooling
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
