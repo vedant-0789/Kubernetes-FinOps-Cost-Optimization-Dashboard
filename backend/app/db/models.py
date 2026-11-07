@@ -90,3 +90,7 @@ class ActionLog(Base):
     applied_by = Column(String(50), default="MANUAL") # MANUAL, AUTO_REMEDIATION
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     details = Column(Text, nullable=True)
+
+
+# v2 platform tables (registered on the same metadata)
+from app.db.platform_models import *  # noqa: E402,F401,F403

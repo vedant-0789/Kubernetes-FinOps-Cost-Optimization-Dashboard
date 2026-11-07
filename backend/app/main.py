@@ -12,7 +12,10 @@ from app.engine.mock_generator import MockDataGenerator
 from app.engine.scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     actions,
+    allocation,
+    clusters,
     health,
+    ingest,
     lifecycle,
     namespaces,
     overview,
@@ -33,10 +36,18 @@ async def lifespan(app: FastAPI):
         logger.info("Applying database migrations...")
         upgrade_head(settings.database_url)
 
+    if settings.environment == "prod" and settings.admin_api_key is None:
+        logger.warning("FINOPS_ADMIN_API_KEY is not set: cluster registry endpoints are unauthenticated")
+
     if settings.seed_demo_data:
+        from app.services.allocation_job import run_allocation
+        from app.services.demo import ensure_demo_cluster
+
         db = SessionLocal()
         try:
             MockDataGenerator.seed_initial_data(db)
+            ensure_demo_cluster(db, settings.demo_backfill_days)
+            run_allocation(db)
         finally:
             db.close()
 
@@ -69,7 +80,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
-    for r in (overview, namespaces, zombies, recommendations, actions, lifecycle, settings_router):
+    for r in (overview, namespaces, zombies, recommendations, actions, lifecycle, settings_router,
+              clusters, ingest, allocation):
         app.include_router(r.router, prefix=API_V1)
 
     @app.get("/", include_in_schema=False)

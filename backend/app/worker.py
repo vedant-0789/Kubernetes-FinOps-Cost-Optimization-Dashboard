@@ -14,7 +14,7 @@ from prometheus_client import start_http_server
 
 from app.core.config import settings
 from app.core.logging import configure_logging
-from app.engine.scheduler import periodic_metrics_collection, start_scheduler, stop_scheduler
+from app.engine.scheduler import run_all_once, start_scheduler, stop_scheduler
 
 logger = logging.getLogger("worker")
 
@@ -26,7 +26,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
 
-    periodic_metrics_collection()  # run once immediately
+    run_all_once()  # catch up immediately
     start_scheduler(settings.collection_interval_seconds)
     logger.info("Worker started.")
     stop.wait()
