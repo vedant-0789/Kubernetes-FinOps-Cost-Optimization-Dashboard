@@ -99,6 +99,27 @@ flowchart TD
 
 ---
 
+## 🚧 v2 platform (in progress)
+
+The project is being rebuilt into a deployable, multi-cluster FinOps platform
+(TimescaleDB, in-cluster agent, Helm charts, SLO-aware right-sizing). Already in place:
+
+- **API v1** under `/api/v1/*`, health probes `/healthz` & `/readyz`, Prometheus metrics at `/metrics`, request-ID tracing.
+- **Database migrations** with Alembic (`backend/migrations`); PostgreSQL/TimescaleDB in production, SQLite for local dev.
+- **Separate worker** process (`python -m app.worker`) so API replicas scale horizontally.
+- **Containers**: `backend/Dockerfile` (non-root, healthcheck), `frontend/Dockerfile` (unprivileged nginx).
+- **Tests & CI**: `pytest` suite run on SQLite and TimescaleDB, `ruff` lint, image builds to GHCR.
+
+```bash
+# Full stack in Docker (UI on :8080, API docs on :8000/docs)
+docker compose -f deploy/docker-compose.yml up --build
+
+# Backend tests
+cd backend && pip install -r requirements-dev.txt && ruff check . && pytest
+```
+
+All settings are environment variables prefixed with `FINOPS_` (see `backend/app/core/config.py`).
+
 ## ⚡ Quick Start Guide
 
 ### Prerequisites

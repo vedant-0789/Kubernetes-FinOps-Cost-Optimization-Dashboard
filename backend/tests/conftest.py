@@ -1,0 +1,39 @@
+"""Test fixtures.
+
+Each test session gets a fresh database: a temp SQLite file by default, or the
+PostgreSQL/TimescaleDB given in FINOPS_TEST_DATABASE_URL (used in CI) so the
+same suite verifies both backends. Settings must be set before `app` imports.
+"""
+
+import os
+import tempfile
+
+_tmpdir = tempfile.mkdtemp(prefix="finops-test-")
+os.environ["FINOPS_DATABASE_URL"] = os.environ.get(
+    "FINOPS_TEST_DATABASE_URL", f"sqlite:///{_tmpdir}/test.db"
+)
+os.environ["FINOPS_ENVIRONMENT"] = "test"
+os.environ["FINOPS_RUN_SCHEDULER_IN_API"] = "false"
+os.environ["FINOPS_AUTO_MIGRATE"] = "true"
+os.environ["FINOPS_SEED_DEMO_DATA"] = "true"
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.db.database import SessionLocal  # noqa: E402
+from app.main import create_app  # noqa: E402
+
+
+@pytest.fixture(scope="session")
+def client():
+    with TestClient(create_app()) as c:
+        yield c
+
+
+@pytest.fixture
+def db():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

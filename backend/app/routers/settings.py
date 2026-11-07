@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from app.db.database import get_db
 from app.db.models import SystemSetting
 from app.db.schemas import SettingsUpdateSchema
 
-router = APIRouter(prefix="/api/settings", tags=["Settings"])
+router = APIRouter(prefix="/settings", tags=["Settings"])
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
     settings_rows = db.query(SystemSetting).all()
     s_map = {s.key: s.value for s in settings_rows}
-    
+
     return {
         "cpu_hourly_rate": float(s_map.get("cpu_hourly_rate", 0.048)),
         "ram_hourly_rate": float(s_map.get("ram_hourly_rate", 0.006)),
@@ -30,19 +31,19 @@ def update_settings(payload: SettingsUpdateSchema, db: Session = Depends(get_db)
         "auto_remediation_enabled": "true" if payload.auto_remediation_enabled else "false",
         "mock_mode": "true" if payload.mock_mode else "false",
     }
-    
+
     for key, val in updates.items():
         row = db.query(SystemSetting).filter(SystemSetting.key == key).first()
         if row:
             row.value = val
         else:
             db.add(SystemSetting(key=key, value=val))
-            
+
     db.commit()
-    
+
     # Recalculate cost snapshots with new pricing
-    from app.engine.cost_calculator import CostCalculator
     from app.db.models import MetricsSnapshot
+    from app.engine.cost_calculator import CostCalculator
     snaps = db.query(MetricsSnapshot).all()
     for snap in snaps:
         c_info = CostCalculator.calculate_pod_cost(
@@ -53,5 +54,5 @@ def update_settings(payload: SettingsUpdateSchema, db: Session = Depends(get_db)
         snap.monthly_cost = c_info["monthly_cost"]
         snap.efficiency_pct = c_info["efficiency_pct"]
     db.commit()
-    
+
     return {"message": "Settings updated successfully", "settings": get_settings(db)}

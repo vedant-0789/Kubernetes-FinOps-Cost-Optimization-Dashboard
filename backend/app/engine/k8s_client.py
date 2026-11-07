@@ -1,8 +1,8 @@
-import os
 import logging
+
 from sqlalchemy.orm import Session
-from app.db.models import ActionLog, MetricsSnapshot
-import datetime
+
+from app.db.models import MetricsSnapshot
 
 logger = logging.getLogger("k8s_client")
 
@@ -12,11 +12,11 @@ class K8sClient:
     Attempts real Kubernetes API connection if available and MOCK_MODE is false;
     otherwise executes simulated state changes.
     """
-    
+
     def __init__(self, mock_mode: bool = True):
         self.mock_mode = mock_mode
         self.k8s_available = False
-        
+
         if not self.mock_mode:
             try:
                 from kubernetes import client, config
@@ -38,7 +38,7 @@ class K8sClient:
         """
         success = True
         msg = f"Scaled deployment {deployment_name} in namespace {namespace} to {replicas} replicas."
-        
+
         if not self.mock_mode and self.k8s_available:
             try:
                 body = {"spec": {"replicas": replicas}}
@@ -48,7 +48,7 @@ class K8sClient:
             except Exception as e:
                 success = False
                 msg = f"Live K8s scaling failed: {str(e)}"
-        
+
         # In mock mode or after live execution, update database snapshots
         if success:
             snaps = db.query(MetricsSnapshot).filter(
@@ -64,7 +64,7 @@ class K8sClient:
                     snap.hourly_cost = 0.0
                     snap.monthly_cost = 0.0
             db.commit()
-            
+
         return {"success": success, "message": msg}
 
     def patch_resource_requests(self, namespace: str, workload_name: str, new_cpu_req: float, new_mem_req_mb: float, db: Session) -> dict:
@@ -73,7 +73,7 @@ class K8sClient:
         """
         success = True
         msg = f"Patched resource requests for {workload_name} in {namespace} (CPU: {new_cpu_req} vCPU, Memory: {new_mem_req_mb} MB)."
-        
+
         if not self.mock_mode and self.k8s_available:
             try:
                 patch_body = {
@@ -117,5 +117,5 @@ class K8sClient:
                 snap.monthly_cost = c_info["monthly_cost"]
                 snap.efficiency_pct = c_info["efficiency_pct"]
             db.commit()
-            
+
         return {"success": success, "message": msg}
