@@ -92,6 +92,12 @@ def _verify(db) -> None:
     verify_applied(db)
 
 
+def _finance(db) -> None:
+    from app.services.finance import run_finance
+
+    run_finance(db)
+
+
 # Kept for the worker's "run once at start" call and existing imports.
 periodic_metrics_collection = _instrumented("collect", _legacy_collect)
 
@@ -110,7 +116,8 @@ def start_scheduler(interval_seconds: int = 30):
     jobs = [("collect", _legacy_collect, interval_seconds),
             ("allocate", _allocate, settings.allocation_interval_seconds),
             ("analyze", _analyze, settings.analysis_interval_seconds),
-            ("verify", _verify, 60)]
+            ("verify", _verify, 60),
+            ("finance", _finance, settings.finance_interval_seconds)]
     if settings.seed_demo_data:
         jobs.append(("demo", _demo_tick, 60))
     for name, fn, every in jobs:

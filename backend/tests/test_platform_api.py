@@ -237,8 +237,11 @@ def test_demo_costs_by_team_and_timeseries(client, demo):
     assert len(series) >= 20
 
 
-def test_autoscaled_node_makes_the_bill_follow_demand(db):
+def test_autoscaled_node_makes_the_bill_follow_demand(db, monkeypatch):
     """Deterministic: replay one fixed weekday of the demo into a fresh cluster."""
+    from app.services import demo
+
+    monkeypatch.setattr(demo, "INCIDENT", None)
     from app.core.security import new_agent_token
     from app.db.platform_models import Cluster
     from app.services.allocation_query import cost_timeseries

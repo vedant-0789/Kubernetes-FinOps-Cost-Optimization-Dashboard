@@ -49,6 +49,7 @@ class DemoNode:
     capacity_type: str = "on_demand"
     zone: str = "us-east-1a"
     peak_only: bool = False      # added by the autoscaler on weekdays 08-20 UTC
+    incident_only: bool = False  # only during the runaway-load-test incident
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,7 @@ class DemoWorkload:
     nodes: tuple[str, ...] = ()  # one per replica (DaemonSets: all nodes)
     pod_offset: int = 0          # extra replicas of an existing workload (HPA scale-out)
     peak_only: bool = False
+    incident_only: bool = False
 
 
 NODES = [
@@ -84,6 +86,9 @@ NODES = [
     DemoNode("ip-10-0-3-31", "c5.2xlarge", 8, 16, capacity_type="spot", zone="us-east-1c"),
     DemoNode("ip-10-0-3-32", "c5.2xlarge", 8, 16, capacity_type="spot", zone="us-east-1c"),
     DemoNode("ip-10-0-4-41", "m5.2xlarge", 8, 32, zone="us-east-1b", peak_only=True),
+    # Scaled out by the cluster autoscaler for the runaway load test (cost incident).
+    DemoNode("ip-10-0-5-51", "c5.4xlarge", 16, 32, zone="us-east-1a", incident_only=True),
+    DemoNode("ip-10-0-5-52", "c5.4xlarge", 16, 32, zone="us-east-1b", incident_only=True),
 ]
 ALL_NODES = tuple(n.name for n in NODES)
 
@@ -123,6 +128,10 @@ WORKLOADS = [
     DemoWorkload("ml", "Deployment", "recommender-inference", 2, 1.5, 6, 0.9, 3.0, _l("ml", "cc-600"),
                  diurnal=0.45, weekend=0.75, noise=0.07, leak_gib_per_hour=0.12, cpu_limit=2, mem_limit_gib=6,
                  net_kbps=200, nodes=("ip-10-0-1-12", "ip-10-0-3-31")),
+    # Cost incident: a load test someone forgot to stop pins two extra nodes for 14 h.
+    DemoWorkload("staging", "Deployment", "runaway-loadtest", 4, 7.0, 12, 6.6, 9.0, _l("qa", "cc-500", "staging"),
+                 noise=0.03, net_kbps=5000, nodes=("ip-10-0-5-51", "ip-10-0-5-51", "ip-10-0-5-52", "ip-10-0-5-52"),
+                 incident_only=True),
     DemoWorkload("kube-system", "Deployment", "coredns", 2, 0.1, 0.07, 0.03, 0.03, _l("platform", "cc-900"),
                  diurnal=0.3, noise=0.1, net_kbps=80, nodes=("ip-10-0-1-11", "ip-10-0-2-21")),
     DemoWorkload("kube-system", "DaemonSet", "kube-proxy", len(ALL_NODES), 0.1, 0.13, 0.02, 0.05,
@@ -215,19 +224,35 @@ def _sample(w: DemoWorkload, pod: str, node: str, ts: datetime.datetime) -> Samp
 
 NODE_BY_NAME = {n.name: n for n in NODES}
 
+# The incident happened 5 days before the process started (09:00-23:00 UTC),
+# so a fresh demo always has it inside its 14-day history. Tests replaying a
+# fixed date set this to None.
+_today = datetime.datetime.now(datetime.UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
+INCIDENT: tuple[datetime.datetime, datetime.datetime] | None = (
+    _today - datetime.timedelta(days=5) + datetime.timedelta(hours=9),
+    _today - datetime.timedelta(days=5) + datetime.timedelta(hours=23),
+)
+
 
 def _is_peak(ts: datetime.datetime) -> bool:
     return ts.weekday() < 5 and 8 <= ts.hour < 20
 
 
+def _in_incident(ts: datetime.datetime) -> bool:
+    return INCIDENT is not None and INCIDENT[0] <= ts < INCIDENT[1]
+
+
 def node_active(name: str, ts: datetime.datetime) -> bool:
-    return not NODE_BY_NAME[name].peak_only or _is_peak(ts)
+    n = NODE_BY_NAME[name]
+    if n.incident_only:
+        return _in_incident(ts)
+    return not n.peak_only or _is_peak(ts)
 
 
 def samples_for_slot(ts: datetime.datetime) -> list[SampleIn]:
     out = []
     for w in WORKLOADS:
-        if w.peak_only and not _is_peak(ts):
+        if (w.peak_only and not _is_peak(ts)) or (w.incident_only and not _in_incident(ts)):
             continue
         for pod, node in zip(_pod_names(w), w.nodes, strict=True):
             if node_active(node, ts):

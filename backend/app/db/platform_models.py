@@ -379,3 +379,86 @@ class RemediationAction(Base):
     dispatched_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
     applied_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
     verified_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+
+
+# --- M5: budgets, anomalies, notifications ---------------------------------------------
+
+
+class NotificationChannel(Base):
+    __tablename__ = "notification_channels"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    type: Mapped[str] = mapped_column(String(20))              # slack | webhook | email
+    config: Mapped[dict] = mapped_column(JSON, default=dict)  # {"url": ...} or {"to": [...]}
+    events: Mapped[list] = mapped_column(JSON, default=lambda: ["budget", "anomaly", "remediation"])
+    cluster_id: Mapped[str | None] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"))  # None = all
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Notification(Base):
+    """Delivery log: every attempt, with the outcome."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    channel_id: Mapped[int] = mapped_column(ForeignKey("notification_channels.id", ondelete="CASCADE"), index=True)
+    event_type: Mapped[str] = mapped_column(String(30))
+    cluster_id: Mapped[str | None] = mapped_column(String(36))
+    subject: Mapped[str] = mapped_column(String(300))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(10))            # sent | failed
+    error: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class Budget(Base):
+    __tablename__ = "budgets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    scope: Mapped[str] = mapped_column(String(20), default="cluster")   # cluster | namespace | label
+    scope_key: Mapped[str | None] = mapped_column(String(100))          # label key
+    scope_value: Mapped[str | None] = mapped_column(String(253))        # namespace or label value
+    monthly_amount: Mapped[float] = mapped_column(Float)
+    thresholds: Mapped[list] = mapped_column(JSON, default=lambda: [50, 80, 100])
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class BudgetAlert(Base):
+    """One row per (budget, month, kind, threshold): alerts fire once per period."""
+
+    __tablename__ = "budget_alerts"
+    __table_args__ = (UniqueConstraint("budget_id", "period", "kind", "threshold", name="uq_budget_alert_once"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    budget_id: Mapped[int] = mapped_column(ForeignKey("budgets.id", ondelete="CASCADE"), index=True)
+    period: Mapped[str] = mapped_column(String(7))                    # YYYY-MM
+    kind: Mapped[str] = mapped_column(String(10))                     # actual | forecast
+    threshold: Mapped[int] = mapped_column(Integer)
+    actual: Mapped[float] = mapped_column(Float)
+    projected: Mapped[float] = mapped_column(Float)
+    fired_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CostAnomaly(Base):
+    __tablename__ = "cost_anomalies"
+    __table_args__ = (UniqueConstraint("cluster_id", "scope", "name", "day", name="uq_cost_anomaly"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), index=True)
+    scope: Mapped[str] = mapped_column(String(20))                    # cluster | namespace
+    name: Mapped[str] = mapped_column(String(253))
+    day: Mapped[datetime.datetime] = mapped_column(DateTime)          # UTC midnight
+    actual: Mapped[float] = mapped_column(Float)
+    expected: Mapped[float] = mapped_column(Float)
+    delta: Mapped[float] = mapped_column(Float)
+    score: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(15), default="open")   # open | acknowledged
+    acknowledged_by: Mapped[str | None] = mapped_column(String(254))
+    detected_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)

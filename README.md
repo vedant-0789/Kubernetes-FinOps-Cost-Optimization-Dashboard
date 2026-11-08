@@ -216,7 +216,22 @@ propose ─▶ dry-run in the cluster ─▶ approval by a *second* operator ─
 - **Tamper-evident audit log**: every login, registry change, dismissal and remediation step is hash-chained
   (SHA-256 of the previous event); `GET /api/v1/audit/verify` pinpoints any edited or deleted event.
 
-The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads,
+### Forecasts, anomalies, budgets & reports (M5)
+
+- **Forecast** (`GET .../forecast?scope=cluster|namespace:<ns>|label:<k>=<v>`): additive Holt-Winters with a
+  damped trend and weekly seasonality (grid-searched on one-step error), 80/95 % prediction intervals, a
+  month-end projection (actual so far + rest of today + remaining days) and a 7-day backtest MAPE.
+- **Cost anomalies**: robust z-score of one-step-ahead forecast errors, so cheaper weekends are not flagged; runs
+  for the cluster and its top namespaces, so an incident is traced to where the money went.
+- **Budgets** per cluster, namespace or label (e.g. `team=payments`): thresholds fire once per month, plus a
+  "forecast to exceed" alert while there is still time to act.
+- **Notifications** to Slack, webhooks or email for budgets, anomalies and remediation (approval needed, failures,
+  automatic rollbacks); every delivery is logged, webhook URLs are masked in the API.
+- **Showback / chargeback** for any calendar month as JSON, CSV or a one-page PDF; rows + shared + idle reconcile
+  to the bill.
+
+The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads, a cost
+incident five days ago caused by a runaway load test,
 14 days of 5-minute history) is generated through the same ingestion code an agent uses.
 
 ## ⚡ Quick Start Guide

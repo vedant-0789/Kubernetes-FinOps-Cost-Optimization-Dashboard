@@ -16,6 +16,7 @@ from app.routers import (
     analysis,
     auth,
     clusters,
+    finance,
     health,
     ingest,
     lifecycle,
@@ -96,7 +97,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     for r in (overview, namespaces, zombies, recommendations, actions, lifecycle, settings_router,
-              clusters, ingest, allocation, analysis, auth, remediation):
+              clusters, ingest, allocation, analysis, auth, remediation, finance):
         app.include_router(r.router, prefix=API_V1)
 
     @app.get("/", include_in_schema=False)
