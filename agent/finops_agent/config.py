@@ -21,6 +21,7 @@ class AgentConfig:
     max_retries: int = 5
     metrics_port: int = 9101
     excluded_namespaces: frozenset[str] = field(default_factory=frozenset)
+    remediation_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> "AgentConfig":
@@ -39,4 +40,5 @@ class AgentConfig:
             batch_size=int(_env("BATCH_SIZE", "2000")),
             metrics_port=int(_env("METRICS_PORT", "9101")),
             excluded_namespaces=excluded,
+            remediation_enabled=(_env("REMEDIATION_ENABLED", "false") or "").lower() == "true",
         )

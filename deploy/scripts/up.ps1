@@ -53,7 +53,7 @@ Run helm upgrade --install finops-agent "$Root\deploy\helm\finops-agent" -n fino
     --set image.repository=kubefinops-agent --set image.tag=dev --set image.pullPolicy=Never `
     --set agent.serverUrl=http://finops-server-api.finops:8000 `
     --set agent.prometheusUrl=http://prometheus-operated.monitoring:9090 `
-    --set agent.backfillHours=1 --set agent.token=$token --set serviceMonitor.enabled=true --wait
+    --set agent.backfillHours=1 --set agent.token=$token --set serviceMonitor.enabled=true --set rbac.allowRemediation=true --wait
 Run kubectl -n finops rollout restart deploy/finops-agent-agent
 
 Step "Demo workloads"

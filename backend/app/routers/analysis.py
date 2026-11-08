@@ -6,16 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from app.core.auth import Principal, require_operator, require_viewer
 from app.core.config import settings
-from app.core.security import require_admin
 from app.db.database import get_db
 from app.db.platform_models import RightsizingRecommendation, UsageSample, WasteFinding, utcnow
 from app.engines import rightsizing as rs
 from app.routers.clusters import get_cluster_or_404
+from app.services import audit
 from app.services.analysis import _epoch, analyze_cluster, savings_summary
 
 router = APIRouter(prefix="/clusters/{cluster_id}", tags=["Right-sizing & waste"],
-                   dependencies=[Depends(require_admin)])
+                   dependencies=[Depends(require_viewer)])
 
 
 class RecommendationOut(BaseModel):
@@ -89,8 +90,10 @@ Status = Literal["open", "applied", "dismissed", "resolved", "all"]
 
 
 @router.post("/analyze", summary="Run right-sizing and waste analysis now")
-def analyze_now(cluster_id: str, db: Session = Depends(get_db)):
-    return analyze_cluster(db, get_cluster_or_404(cluster_id, db))
+def analyze_now(cluster_id: str, db: Session = Depends(get_db), p: Principal = Depends(require_operator)):
+    result = analyze_cluster(db, get_cluster_or_404(cluster_id, db))
+    audit.record(db, p.subject, "analysis.run", cluster_id=cluster_id, details=result, commit=True)
+    return result
 
 
 @router.get("/savings", summary="Non-overlapping potential monthly savings by category")
@@ -156,8 +159,12 @@ def get_recommendation(cluster_id: str, rec_id: int, days: int = Query(7, ge=1, 
 
 
 @router.post("/recommendations/{rec_id}/dismiss", response_model=RecommendationOut)
-def dismiss_recommendation(cluster_id: str, rec_id: int, body: DismissIn, db: Session = Depends(get_db)):
+def dismiss_recommendation(cluster_id: str, rec_id: int, body: DismissIn, db: Session = Depends(get_db),
+                           p: Principal = Depends(require_operator)):
     rec = _get_rec(db, cluster_id, rec_id)
+    audit.record(db, p.subject, "recommendation.dismiss", cluster_id=cluster_id,
+                 target=f"{rec.namespace}/{rec.workload_kind}/{rec.workload_name}/{rec.container}",
+                 details={"id": rec.id, "reason": body.reason})
     rec.status, rec.dismissed_reason, rec.updated_at = "dismissed", body.reason, utcnow()
     db.commit()
     db.refresh(rec)
@@ -203,10 +210,13 @@ def list_waste(cluster_id: str, status: Status = "open", kind: str | None = None
 
 
 @router.post("/waste/{finding_id}/dismiss", response_model=FindingOut)
-def dismiss_finding(cluster_id: str, finding_id: int, body: DismissIn, db: Session = Depends(get_db)):
+def dismiss_finding(cluster_id: str, finding_id: int, body: DismissIn, db: Session = Depends(get_db),
+                    p: Principal = Depends(require_operator)):
     f = db.get(WasteFinding, finding_id)
     if f is None or f.cluster_id != cluster_id:
         raise HTTPException(404, "Finding not found")
+    audit.record(db, p.subject, "finding.dismiss", cluster_id=cluster_id, target=f"{f.kind}:{f.name}",
+                 details={"id": f.id, "reason": body.reason})
     f.status, f.dismissed_reason = "dismissed", body.reason
     db.commit()
     db.refresh(f)

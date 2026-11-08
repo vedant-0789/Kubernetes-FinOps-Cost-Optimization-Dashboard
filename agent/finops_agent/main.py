@@ -11,6 +11,7 @@ from prometheus_client import Counter, Gauge, start_http_server
 from finops_agent import __version__
 from finops_agent.clients import FatalPushError, PrometheusClient, ServerClient
 from finops_agent.config import AgentConfig
+from finops_agent.executor import Executor
 from finops_agent.inventory import collect_inventory
 from finops_agent.usage import build_samples, render_queries
 
@@ -37,6 +38,7 @@ class Agent:
         self.clock = clock
         self.queries = render_queries(cfg.slot_seconds)
         self.next_slot: int | None = None
+        self.executor = Executor(kube_apis[1], server) if (kube_apis and cfg.remediation_enabled) else None
         self.last_inventory = 0.0
 
     # --- one slot ------------------------------------------------------------------
@@ -85,6 +87,15 @@ class Agent:
                 ERRORS.labels("inventory").inc()
                 logger.exception("Inventory push failed")
 
+        if self.executor is not None:
+            try:
+                self.executor.run_once()
+            except FatalPushError:
+                raise
+            except Exception:
+                ERRORS.labels("remediation").inc()
+                logger.exception("Remediation poll failed")
+
         ready = self.latest_ready_slot()
         if self.next_slot is None:
             self.next_slot = ready - self.cfg.backfill_hours * 3600 + self.cfg.slot_seconds
@@ -126,7 +137,8 @@ def main() -> None:
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
-    logger.info("Agent %s started: server=%s prometheus=%s", __version__, cfg.server_url, cfg.prometheus_url)
+    logger.info("Agent %s started: server=%s prometheus=%s remediation=%s", __version__, cfg.server_url,
+                cfg.prometheus_url, cfg.remediation_enabled)
     while not stop.is_set():
         try:
             agent.tick()

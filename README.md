@@ -193,6 +193,29 @@ free capacity). An idle workload gets an idle finding *instead of* a right-sizin
 `GET .../savings` never counts the same dollar twice (node consolidation is reported separately because it
 overlaps with right-sizing). Dismissed items stay dismissed; fixed items resolve automatically.
 
+### Safe remediation, users & audit (M4)
+
+Changes never go straight to a cluster. Each action (from a right-sizing recommendation, an idle-workload
+finding, or manual) moves through a guarded workflow:
+
+```
+propose ─▶ dry-run in the cluster ─▶ approval by a *second* operator ─▶ apply (inside the change window)
+                (dryRun=All, diff)          (two-person rule)              │
+                                                                            ▼
+                         auto-rollback ◀── OOM kills / throttling got worse ── watch period ──▶ verified
+```
+
+- **Agent executor** (opt-in: `rbac.allowRemediation=true`): server-side dry-run so admission policies and quotas
+  are exercised, captures the current spec before applying, strategic-merge patches only the resources it
+  changes. Rollbacks restore the captured spec and explicitly remove limits the change added.
+- **Guardrails**: protected namespaces, Deployments/StatefulSets only, one open action per workload,
+  per-cluster hourly rate limit, change window (`FINOPS_CHANGE_WINDOW_UTC`; rollbacks bypass it).
+- **GitOps**: every action exports as a kustomize strategic-merge patch (`GET .../actions/{id}/patch.yaml`).
+- **Users & roles**: viewer / operator / admin, PBKDF2-hashed passwords, short-lived JWTs; roles are re-read on
+  every request so demotions apply immediately. A bootstrap admin is created from config.
+- **Tamper-evident audit log**: every login, registry change, dismissal and remediation step is hash-chained
+  (SHA-256 of the previous event); `GET /api/v1/audit/verify` pinpoints any edited or deleted event.
+
 The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads,
 14 days of 5-minute history) is generated through the same ingestion code an agent uses.
 

@@ -14,7 +14,8 @@ def test_migrations_upgrade_and_downgrade_cleanly(tmp_path):
             "system_settings"} <= tables
     assert {"clusters", "nodes", "workloads", "usage_samples", "node_samples", "cost_allocations",
             "node_costs", "allocation_watermarks", "volumes", "services", "autoscalers",
-            "rightsizing_recommendations", "waste_findings", "analysis_runs"} <= tables
+            "rightsizing_recommendations", "waste_findings", "analysis_runs", "users", "audit_events",
+            "remediation_actions"} <= tables
 
     command.downgrade(cfg, "base")
     assert set(inspect(create_engine(url)).get_table_names()) <= {"alembic_version"}

@@ -27,4 +27,14 @@ stringData:
   {{- with .Values.secrets.adminApiKey }}
   FINOPS_ADMIN_API_KEY: {{ . | quote }}
   {{- end }}
+  {{- /* Keep an existing generated secret on upgrade so sessions survive. */}}
+  {{- $existing := lookup "v1" "Secret" .Release.Namespace (include "finops.secretName" .) }}
+  {{- $jwt := .Values.secrets.jwtSecret | default (and $existing (index $existing.data "FINOPS_JWT_SECRET") | default "" | b64dec) | default (randAlphaNum 48) }}
+  FINOPS_JWT_SECRET: {{ $jwt | quote }}
+  {{- with .Values.secrets.bootstrapAdmin }}
+  {{- if and .email .password }}
+  FINOPS_BOOTSTRAP_ADMIN_EMAIL: {{ .email | quote }}
+  FINOPS_BOOTSTRAP_ADMIN_PASSWORD: {{ .password | quote }}
+  {{- end }}
+  {{- end }}
 {{- end }}

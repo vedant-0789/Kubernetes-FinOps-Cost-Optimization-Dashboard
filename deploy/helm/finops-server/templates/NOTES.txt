@@ -12,7 +12,7 @@ Register a cluster and install its agent:
   helm install finops-agent deploy/helm/finops-agent -n finops \
        --set agent.serverUrl=http://{{ include "finops.fullname" . }}-api.{{ .Release.Namespace }}:8000 \
        --set agent.token=<agent_token from the response>
-{{- if not .Values.secrets.adminApiKey }}
+{{- if not .Values.secrets.bootstrapAdmin.email }}
 
-WARNING: secrets.adminApiKey is empty - cluster registry endpoints are unauthenticated.
+NOTE: no secrets.bootstrapAdmin set - create the first admin with secrets.adminApiKey via POST /api/v1/users.
 {{- end }}

@@ -13,7 +13,6 @@ import secrets
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.db.database import get_db
 from app.db.platform_models import Cluster
 
@@ -59,12 +58,3 @@ def authenticate_agent(
                 raise HTTPException(status.HTTP_403_FORBIDDEN, "Cluster is disabled")
             return cluster
     raise unauthorized
-
-
-def require_admin(x_admin_key: str | None = Header(default=None)) -> None:
-    """Interim guard for registry endpoints; replaced by JWT + RBAC in M4."""
-    expected = settings.admin_api_key
-    if expected is None:
-        return
-    if not x_admin_key or not hmac.compare_digest(x_admin_key, expected):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Admin key required")
