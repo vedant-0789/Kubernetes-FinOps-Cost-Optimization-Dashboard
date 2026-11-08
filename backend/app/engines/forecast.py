@@ -3,7 +3,8 @@
 Forecast: additive Holt-Winters with a damped trend and weekly seasonality
 (period 7 on daily costs). Smoothing parameters are chosen by grid search on
 one-step-ahead squared error. With fewer than two full seasons of history it
-falls back to the mean of recent days (no trend/season can be estimated).
+falls back to the median of recent days with a MAD-based interval (no trend
+or season can be estimated yet).
 Prediction intervals use the one-step residual standard deviation, widened
 with the horizon.
 
@@ -79,10 +80,13 @@ def fit(series: Sequence[float], period: int = 7) -> Fit:
         best = min((_holt_winters(x, period, a, b, g) for a in ALPHAS for b in BETAS for g in GAMMAS),
                    key=lambda r: r[0])
         return best[1]
+    # Short history: robust level (median) and spread (MAD), so a single
+    # incident day cannot drag the forecast or blow up the interval.
     recent = x[-period:] or [0.0]
-    mean = sum(recent) / len(recent)
-    sigma = math.sqrt(sum((v - mean) ** 2 for v in recent) / max(1, len(recent) - 1)) if len(recent) > 1 else 0.0
-    return Fit("mean", 0, 0, 0, mean, 0.0, [0.0], [None] * len(x), sigma)
+    level = _median(recent)
+    sigma = 1.4826 * _median([abs(v - level) for v in recent]) if len(recent) > 1 else 0.0
+    sigma = max(sigma, 0.02 * abs(level))
+    return Fit("mean", 0, 0, 0, level, 0.0, [0.0], [None] * len(x), sigma)
 
 
 def forecast(series: Sequence[float], horizon: int, period: int = 7) -> Forecast:
@@ -90,7 +94,10 @@ def forecast(series: Sequence[float], horizon: int, period: int = 7) -> Forecast
     points = []
     for h in range(1, horizon + 1):
         v = max(0.0, f.predict(h))
-        sd = f.sigma * math.sqrt(1 + (h - 1) * f.alpha**2) if f.method == "holt_winters" else f.sigma * math.sqrt(h)
+        if f.method == "holt_winters":
+            sd = f.sigma * math.sqrt(1 + (h - 1) * f.alpha**2)
+        else:   # stationary level: the band does not grow with the horizon
+            sd = f.sigma * math.sqrt(1 + 1 / 7)
         points.append({"h": h, "value": round(v, 4),
                        "lo80": round(max(0.0, v - Z[0.80] * sd), 4), "hi80": round(v + Z[0.80] * sd, 4),
                        "lo95": round(max(0.0, v - Z[0.95] * sd), 4), "hi95": round(v + Z[0.95] * sd, 4)})

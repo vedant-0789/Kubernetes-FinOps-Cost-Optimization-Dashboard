@@ -230,6 +230,24 @@ propose ─▶ dry-run in the cluster ─▶ approval by a *second* operator ─
 - **Showback / chargeback** for any calendar month as JSON, CSV or a one-page PDF; rows + shared + idle reconcile
   to the bill.
 
+### Web UI (M6)
+
+React 18 + React Router + TanStack Query + Recharts, signed in with the platform's users and roles:
+
+| Page | What it shows / does |
+| :--- | :--- |
+| Overview | run rate, idle %, efficiency, nodes/spot, 30-day stacked cost, non-overlapping savings, top right-sizing, anomalies, budgets |
+| Cost allocation | any window, grouping (namespace, workload, node, pod, any label), shared costs spread or separate; CSV/PDF showback export |
+| Forecast & anomalies | history, forecast and 80 % band, month-end projection, model and backtest error; anomalies with acknowledge |
+| Right-sizing | recommendations; detail with hourly CPU/memory peaks vs current and recommended requests, OOM markers, evidence and a side-by-side comparison of SLO-aware, VPA-style and p95+20 % |
+| Waste | idle workloads (scale to 0), orphaned volumes, unused load balancers, removable nodes |
+| Changes & approvals | approval queue with dry-run diffs, two-person rule enforced in the UI, progress timeline, verification before/after, GitOps patch download |
+| Budgets, Clusters, Users, Notifications, Audit log | create budgets; register clusters (token shown once with the Helm command); manage roles; Slack/webhook/email channels with test send; hash-chain verification |
+
+```bash
+cd frontend && npm ci && npm test && npm run dev    # http://localhost:5173 (proxies /api to :8000)
+```
+
 The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads, a cost
 incident five days ago caused by a runaway load test,
 14 days of 5-minute history) is generated through the same ingestion code an agent uses.

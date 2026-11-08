@@ -6,10 +6,10 @@ Kubernetes (ConfigMap/Secret) and tests.
 """
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -30,7 +30,9 @@ class Settings(BaseSettings):
     auto_migrate: bool = True
 
     # --- HTTP -----------------------------------------------------------------
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    # NoDecode: accept plain comma-separated env values (pydantic-settings would
+    # otherwise insist on JSON for list fields and crash on `a,b`).
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["http://localhost:5173"])
 
     # --- Logging ----------------------------------------------------------------
     log_level: str = "INFO"
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
     allocation_interval_seconds: int = 300
     # Re-allocate this many recent hours each run so late-arriving samples count.
     allocation_lookback_hours: int = 2
-    shared_namespaces: list[str] = Field(
+    shared_namespaces: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["kube-system", "kube-public", "kube-node-lease", "monitoring"]
     )
 
@@ -66,7 +68,7 @@ class Settings(BaseSettings):
 
     # --- Remediation guardrails (M4) -----------------------------------------------------
     require_two_person_approval: bool = True
-    protected_namespaces: list[str] = Field(
+    protected_namespaces: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["kube-system", "kube-public", "kube-node-lease"]
     )
     change_window_utc: str = "00:00-24:00"   # e.g. "02:00-06:00"; agents only receive actions inside it
@@ -109,7 +111,12 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", "shared_namespaces", "protected_namespaces", mode="before")
     @classmethod
     def _split_csv(cls, v):
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+
+                return json.loads(v)
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
 

@@ -35,6 +35,17 @@ def test_short_history_falls_back_to_mean():
     assert fc.points[0]["value"] == pytest.approx(11.5)
 
 
+def test_short_history_fallback_is_robust_to_a_spike():
+    """Regression (seen in the UI): one incident day inflated the mean and made
+    the 80 % band grow like a random walk to $0-$100 over 30 days."""
+    hist = [40.8, 40.8, 36.2, 36.2, 40.8, 59.9, 40.8, 40.8, 40.8, 36.2]
+    fc = forecast(hist, 30)
+    first, last = fc.points[0], fc.points[-1]
+    assert first["value"] == pytest.approx(40.8)
+    assert last["hi80"] - last["lo80"] == pytest.approx(first["hi80"] - first["lo80"])
+    assert last["hi80"] < 50
+
+
 def test_trend_is_damped_not_extrapolated_forever():
     rising = weekly(28, weekend=0, trend=1.0)
     far = forecast(rising, 60).points[-1]["value"]

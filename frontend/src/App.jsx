@@ -1,187 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar';
-import Sidebar from './components/Sidebar';
-import Toast from './components/Toast';
-
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import Layout from './components/Layout';
+import { Loading } from './components/ui';
+import { useAuth } from './lib/auth';
+import { useClusters } from './lib/queries';
+import ActionsPage from './pages/ActionsPage';
+import AuditPage from './pages/AuditPage';
+import BudgetsPage from './pages/BudgetsPage';
+import ChannelsPage from './pages/ChannelsPage';
+import ClustersPage from './pages/ClustersPage';
+import CostsPage from './pages/CostsPage';
+import ForecastPage from './pages/ForecastPage';
+import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
-import NamespacesPage from './pages/NamespacesPage';
-import ZombiePage from './pages/ZombiePage';
-import RightSizingPage from './pages/RightSizingPage';
-import ActionHistoryPage from './pages/ActionHistoryPage';
-import LifecyclePage from './pages/LifecyclePage';
-import SettingsPage from './pages/SettingsPage';
+import RecommendationDetailPage from './pages/RecommendationDetailPage';
+import RecommendationsPage from './pages/RecommendationsPage';
+import UsersPage from './pages/UsersPage';
+import WastePage from './pages/WastePage';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+function RequireAuth({ children, role }) {
+  const { status, can } = useAuth();
+  const loc = useLocation();
+  if (status === 'loading') return <Loading label="Checking your session…" />;
+  if (status !== 'authenticated') return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
+  if (role && !can(role)) return <Navigate to="/" replace />;
+  return children;
+}
+
+function Home() {
+  const { data, isLoading } = useClusters();
+  if (isLoading) return <Loading />;
+  const first = data?.find((c) => c.is_active) || data?.[0];
+  return <Navigate to={first ? `/c/${first.id}/overview` : '/clusters'} replace />;
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [overview, setOverview] = useState(null);
-  const [trend, setTrend] = useState([]);
-  const [namespaces, setNamespaces] = useState([]);
-  const [zombies, setZombies] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
-  const [actionHistory, setActionHistory] = useState([]);
-  const [lifecycle, setLifecycle] = useState(null);
-  const [settings, setSettings] = useState(null);
-
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [toast, setToast] = useState(null);
-
-  const fetchAllData = async () => {
-    setIsRefreshing(true);
-    try {
-      const [ovRes, trRes, nsRes, zbRes, recRes, actRes, lcRes, stRes] = await Promise.all([
-        fetch(`${API_BASE}/overview`).then(r => r.json()),
-        fetch(`${API_BASE}/cost-trend?range=30d`).then(r => r.json()),
-        fetch(`${API_BASE}/namespaces`).then(r => r.json()),
-        fetch(`${API_BASE}/zombies`).then(r => r.json()),
-        fetch(`${API_BASE}/recommendations`).then(r => r.json()),
-        fetch(`${API_BASE}/actions/history`).then(r => r.json()),
-        fetch(`${API_BASE}/lifecycle`).then(r => r.json()),
-        fetch(`${API_BASE}/settings`).then(r => r.json()),
-      ]);
-
-      setOverview(ovRes);
-      setTrend(trRes);
-      setNamespaces(nsRes);
-      setZombies(zbRes);
-      setRecommendations(recRes);
-      setActionHistory(actRes);
-      setLifecycle(lcRes);
-      setSettings(stRes);
-    } catch (err) {
-      console.error('API Fetch error:', err);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAllData();
-    // Poll telemetry every 15s
-    const interval = setInterval(fetchAllData, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchPods = async (namespaceName) => {
-    const res = await fetch(`${API_BASE}/namespaces/${namespaceName}/pods`);
-    return await res.json();
-  };
-
-  const handleRemediateZombie = async (id) => {
-    const res = await fetch(`${API_BASE}/zombies/${id}/remediate`, { method: 'POST' });
-    if (res.ok) {
-      const action = await res.json();
-      setToast({ message: `Zombie workload scaled to 0! Realized $${action.monthly_savings.toFixed(2)}/mo savings.`, type: 'success' });
-      fetchAllData();
-    } else {
-      setToast({ message: 'Failed to remediate zombie workload.', type: 'error' });
-    }
-  };
-
-  const handleApplyRecommendation = async (id) => {
-    const res = await fetch(`${API_BASE}/recommendations/${id}/apply`, { method: 'POST' });
-    if (res.ok) {
-      const action = await res.json();
-      setToast({ message: `Patched container requests! Realized $${action.monthly_savings.toFixed(2)}/mo savings.`, type: 'success' });
-      fetchAllData();
-    } else {
-      setToast({ message: 'Failed to apply recommendation.', type: 'error' });
-    }
-  };
-
-  const handleSaveSettings = async (newSettings) => {
-    const res = await fetch(`${API_BASE}/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newSettings)
-    });
-    if (res.ok) {
-      setToast({ message: 'FinOps settings & pricing updated successfully!', type: 'success' });
-      fetchAllData();
-    } else {
-      setToast({ message: 'Failed to update settings.', type: 'error' });
-    }
-  };
-
-  const zombieActiveCount = (zombies || []).filter(z => z.status === 'ACTIVE').length;
-  const recPendingCount = (recommendations || []).filter(r => r.status === 'PENDING').length;
-
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans">
-      <Navbar
-        overviewData={overview}
-        onRefresh={fetchAllData}
-        isRefreshing={isRefreshing}
-      />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          zombieCount={zombieActiveCount}
-          recCount={recPendingCount}
-        />
-
-        <main className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
-          {activeTab === 'overview' && (
-            <OverviewPage
-              overviewData={overview}
-              trendData={trend}
-              namespacesData={namespaces}
-              onNavigate={setActiveTab}
-            />
-          )}
-
-          {activeTab === 'namespaces' && (
-            <NamespacesPage
-              namespacesData={namespaces}
-              fetchPods={fetchPods}
-            />
-          )}
-
-          {activeTab === 'zombies' && (
-            <ZombiePage
-              zombiesData={zombies}
-              onRemediateZombie={handleRemediateZombie}
-            />
-          )}
-
-          {activeTab === 'rightsizing' && (
-            <RightSizingPage
-              recommendationsData={recommendations}
-              onApplyRecommendation={handleApplyRecommendation}
-            />
-          )}
-
-          {activeTab === 'history' && (
-            <ActionHistoryPage
-              actionHistoryData={actionHistory}
-            />
-          )}
-
-          {activeTab === 'lifecycle' && (
-            <LifecyclePage
-              lifecycleData={lifecycle}
-            />
-          )}
-
-          {activeTab === 'settings' && (
-            <SettingsPage
-              settingsData={settings}
-              onSaveSettings={handleSaveSettings}
-            />
-          )}
-        </main>
-      </div>
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<RequireAuth><Layout /></RequireAuth>}>
+        <Route index element={<Home />} />
+        <Route path="clusters" element={<ClustersPage />} />
+        <Route path="c/:clusterId">
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<OverviewPage />} />
+          <Route path="costs" element={<CostsPage />} />
+          <Route path="forecast" element={<ForecastPage />} />
+          <Route path="recommendations" element={<RecommendationsPage />} />
+          <Route path="recommendations/:recId" element={<RecommendationDetailPage />} />
+          <Route path="waste" element={<WastePage />} />
+          <Route path="actions" element={<ActionsPage />} />
+          <Route path="budgets" element={<BudgetsPage />} />
+        </Route>
+        <Route path="admin/users" element={<RequireAuth role="admin"><UsersPage /></RequireAuth>} />
+        <Route path="admin/channels" element={<RequireAuth role="admin"><ChannelsPage /></RequireAuth>} />
+        <Route path="admin/audit" element={<RequireAuth role="admin"><AuditPage /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   );
 }

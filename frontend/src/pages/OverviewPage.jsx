@@ -1,236 +1,122 @@
-import React, { useState } from 'react';
-import StatCard from '../components/StatCard';
-import EfficiencyBadge from '../components/EfficiencyBadge';
-import { 
-  DollarSign, 
-  TrendingDown, 
-  CheckCircle, 
-  Ghost, 
-  Sliders, 
-  ArrowRight,
-  TrendingUp,
-  PieChart as PieIcon
-} from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar
-} from 'recharts';
+import { Link, useParams } from 'react-router-dom';
+import { AlertTriangle, Coins, Cpu, Gauge, PiggyBank, Server } from 'lucide-react';
+import { Badge, Card, Kpi, PageHeader, Progress, Query, RiskBadge, StatusBadge } from '../components/ui';
+import { StackedCost } from '../components/charts';
+import { money, pct, relTime, shortDate } from '../lib/format';
+import { useAnomalies, useBudgetsStatus, useRecommendations, useSavings, useSummary, useTimeseries } from '../lib/queries';
 
-const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899', '#64748B'];
+const WASTE_LABELS = {
+  IDLE_WORKLOAD: 'Idle workloads', ORPHANED_VOLUME: 'Orphaned volumes', UNUSED_LB: 'Unused load balancers',
+  UNDERUTILIZED_NODE: 'Removable nodes',
+};
 
-export default function OverviewPage({ overviewData, trendData, namespacesData, onNavigate }) {
-  const [trendRange, setTrendRange] = useState('30d');
-
-  if (!overviewData) return <div className="p-8 text-center text-slate-400">Loading cluster telemetry...</div>;
-
-  const displayTrend = trendRange === '7d' ? trendData.slice(-7) : trendData;
-
-  const pieData = (namespacesData || []).map(ns => ({
-    name: ns.name,
-    value: ns.monthly_cost
-  }));
+export default function OverviewPage() {
+  const { clusterId } = useParams();
+  const summary = useSummary(clusterId);
+  const series = useTimeseries(clusterId, { window: '30d', step: '1d', top: 6 });
+  const savings = useSavings(clusterId);
+  const recs = useRecommendations(clusterId, { status: 'open' });
+  const anomalies = useAnomalies(clusterId, { status: 'open' });
+  const budgets = useBudgetsStatus(clusterId);
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Cluster FinOps Overview</h2>
-        <p className="text-xs text-slate-400 mt-1">Real-time resource allocation, cost attribution, and automated waste reduction opportunity.</p>
-      </div>
-
-      {/* Headline Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard
-          title="Total Monthly Cost"
-          value={`$${overviewData.total_monthly_cost.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext="Run rate based on hourly requests"
-          icon={DollarSign}
-          color="emerald"
-        />
-        <StatCard
-          title="Potential Monthly Savings"
-          value={`$${overviewData.total_potential_savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext="Unused & over-provisioned waste"
-          icon={TrendingDown}
-          color="amber"
-        />
-        <StatCard
-          title="Realized Monthly Savings"
-          value={`$${overviewData.realized_monthly_savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext="Eliminated via remediations"
-          icon={CheckCircle}
-          color="cyan"
-        />
-        <StatCard
-          title="Zombie Workloads"
-          value={overviewData.zombie_count}
-          subtext="Flagged <5% usage pods"
-          icon={Ghost}
-          color="rose"
-        />
-        <StatCard
-          title="Overall Efficiency"
-          value={`${overviewData.overall_efficiency_pct}%`}
-          subtext="Resource usage / request ratio"
-          icon={TrendingUp}
-          color="violet"
-        />
-      </div>
-
-      {/* Main Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Cost Trend Chart */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-white tracking-tight">Cluster Cost Trend</h3>
-              <p className="text-xs text-slate-400">Actual vs Potential Optimized Spend ($/mo rate)</p>
-            </div>
-            <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
-              <button
-                onClick={() => setTrendRange('7d')}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${trendRange === '7d' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                7 Days
-              </button>
-              <button
-                onClick={() => setTrendRange('30d')}
-                className={`px-2.5 py-1 rounded-md font-medium transition-all ${trendRange === '30d' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                30 Days
-              </button>
-            </div>
+    <>
+      <Query q={summary}>{(s) => (
+        <>
+          <PageHeader title={s.cluster.name}
+            subtitle={`${s.cluster.provider.toUpperCase()} ${s.cluster.region || ''} · agent ${s.cluster.agent_version || 'n/a'} · last seen ${relTime(s.cluster.last_seen_at)}`} />
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <Kpi label="Monthly run rate" value={money(s.monthly_run_rate, { whole: true })} hint={`${money(s.hourly_run_rate)}/h for running nodes`} icon={Coins} />
+            <Kpi label="Last 24 h" value={money(s.cost_last_24h)} hint="allocated + idle" icon={Gauge} tone="cyan" />
+            <Kpi label="Idle capacity" value={pct(s.idle_pct)} hint={`${money(s.idle_cost_last_24h)} in 24 h`} icon={AlertTriangle} tone={s.idle_pct > 0.3 ? 'amber' : 'emerald'} />
+            <Kpi label="Efficiency" value={pct(s.efficiency)} hint="cost of used vs. paid resources" icon={Cpu} tone="violet" />
+            <Kpi label="Nodes" value={s.nodes} hint={`${s.spot_nodes} spot · ${s.workloads} workloads`} icon={Server} tone="slate" />
           </div>
+        </>
+      )}</Query>
 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={displayTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="actualCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="optCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#06B6D4" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                <XAxis dataKey="date" stroke="#64748B" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748B" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                  formatter={(val) => [`$${val}`, 'Monthly Rate']}
-                />
-                <Area type="monotone" dataKey="actual_cost" name="Current Run-Rate" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#actualCost)" />
-                <Area type="monotone" dataKey="potential_optimized_cost" name="Optimized Target" stroke="#06B6D4" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#optCost)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Namespace Cost Breakdown Pie */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-              <PieIcon className="w-4 h-4 text-emerald-400" />
-              Cost by Namespace
-            </h3>
-            <span className="text-xs text-slate-400">8 Namespaces</span>
-          </div>
-
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#090D16" />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                  formatter={(v) => [`$${v}/mo`, 'Cost']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-            {pieData.map((item, idx) => (
-              <div key={item.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                  <span className="text-slate-300 font-medium">{item.name}</span>
-                </div>
-                <span className="text-slate-400">${item.value.toFixed(2)}</span>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card title="Daily cost, last 30 complete days" className="lg:col-span-2">
+          <Query q={series}>{(pts) => <StackedCost points={pts} />}</Query>
+        </Card>
+        <Card title="Potential savings" actions={<Link to="../recommendations" className="text-xs text-emerald-400 hover:underline">Details</Link>}>
+          <Query q={savings}>{(s) => (
+            <div className="space-y-4">
+              <div>
+                <div className="text-3xl font-bold text-emerald-400">{money(s.total_monthly_savings)}<span className="text-sm font-normal text-slate-400"> / month</span></div>
+                <div className="text-xs text-slate-400">non-overlapping · strategy {s.strategy}</div>
               </div>
-            ))}
-          </div>
-        </div>
+              <ul className="space-y-2 text-sm">
+                <li className="flex justify-between"><span className="text-slate-300">Right-sizing ({s.rightsizing.count})</span><span className="tabular-nums">{money(s.rightsizing.monthly_savings)}</span></li>
+                {Object.entries(s.waste).map(([k, v]) => (
+                  <li key={k} className="flex justify-between">
+                    <span className="text-slate-300">{WASTE_LABELS[k] || k} ({v.count}){s.overlapping.includes(k) && <Badge tone="slate" className="ml-1.5">overlaps</Badge>}</span>
+                    <span className="tabular-nums">{money(v.monthly_savings)}</span>
+                  </li>
+                ))}
+                {s.reliability_fixes.count > 0 && (
+                  <li className="flex justify-between border-t border-slate-800 pt-2 text-amber-300">
+                    <span>Reliability fixes ({s.reliability_fixes.count})</span><span className="tabular-nums">+{money(s.reliability_fixes.monthly_cost)}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}</Query>
+        </Card>
       </div>
 
-      {/* Quick Action Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Zombie Workloads Callout */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between bg-gradient-to-r from-rose-950/30 to-slate-900/60">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Ghost className="w-5 h-5 text-rose-400" />
-              <h4 className="font-bold text-white text-base">Zombie Pods Detected</h4>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                {overviewData.zombie_count} Workloads
-              </span>
-            </div>
-            <p className="text-xs text-slate-300">Sustained zero/idle usage consuming cloud dollars continuously.</p>
-          </div>
-          <button
-            onClick={() => onNavigate('zombies')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white shadow-lg shadow-rose-600/30 transition-all shrink-0"
-          >
-            <span>Inspect & Clean</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Right-Sizing Callout */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between bg-gradient-to-r from-amber-950/30 to-slate-900/60">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-amber-400" />
-              <h4 className="font-bold text-white text-base">Right-Sizing Opportunities</h4>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                {overviewData.active_recommendations_count} Pending
-              </span>
-            </div>
-            <p className="text-xs text-slate-300">Over-provisioned requests identified via p95 usage analysis + 20% buffer.</p>
-          </div>
-          <button
-            onClick={() => onNavigate('rightsizing')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-semibold text-white shadow-lg shadow-amber-600/30 transition-all shrink-0"
-          >
-            <span>Apply Right-Sizing</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card title="Top right-sizing" className="lg:col-span-2" actions={<Link to="../recommendations" className="text-xs text-emerald-400 hover:underline">All</Link>}>
+          <Query q={recs}>{(rows) => (
+            <ul className="divide-y divide-slate-800">
+              {[...rows].sort((a, b) => b.monthly_savings - a.monthly_savings).slice(0, 6).map((r) => (
+                <li key={r.id}>
+                  <Link to={`../recommendations/${r.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:bg-slate-800/30">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-slate-100">{r.namespace}/{r.workload_name} <span className="text-slate-500">· {r.container}</span></div>
+                      <div className="text-xs text-slate-400">{r.reasons[0]}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <RiskBadge risk={r.risk} />
+                      <span className={r.monthly_savings >= 0 ? 'tabular-nums text-emerald-400' : 'tabular-nums text-amber-300'}>
+                        {r.monthly_savings >= 0 ? money(r.monthly_savings) : `+${money(-r.monthly_savings)}`}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+              {!rows.length && <li className="py-6 text-center text-sm text-slate-400">No open recommendations.</li>}
+            </ul>
+          )}</Query>
+        </Card>
+        <div className="space-y-6">
+          <Card title="Cost anomalies" actions={<Link to="../forecast" className="text-xs text-emerald-400 hover:underline">Forecast</Link>}>
+            <Query q={anomalies}>{(rows) => (rows.length ? (
+              <ul className="space-y-2 text-sm">
+                {rows.slice(0, 4).map((a) => (
+                  <li key={a.id} className="flex justify-between gap-2">
+                    <span className="truncate text-slate-300">{shortDate(a.day)} · {a.scope} <b>{a.name}</b></span>
+                    <span className="tabular-nums text-rose-300">+{money(a.delta)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <div className="text-sm text-slate-400">No open anomalies.</div>)}</Query>
+          </Card>
+          <Card title="Budgets" actions={<Link to="../budgets" className="text-xs text-emerald-400 hover:underline">Manage</Link>}>
+            <Query q={budgets}>{(rows) => (rows.length ? (
+              <ul className="space-y-3">
+                {rows.map((b) => (
+                  <li key={b.budget_id} className="space-y-1">
+                    <div className="flex justify-between text-sm"><span className="text-slate-200">{b.name}</span><StatusBadge status={b.state} /></div>
+                    <Progress value={b.pct_actual / 100} marker={b.pct_projected / 100} tone={b.state === 'ok' ? 'emerald' : b.state === 'at_risk' ? 'amber' : 'rose'} />
+                    <div className="text-[11px] text-slate-400">{money(b.actual_to_date)} of {money(b.monthly_amount)} · projected {money(b.projected)}</div>
+                  </li>
+                ))}
+              </ul>
+            ) : <div className="flex items-center gap-2 text-sm text-slate-400"><PiggyBank className="h-4 w-4" />No budgets yet.</div>)}</Query>
+          </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 }
