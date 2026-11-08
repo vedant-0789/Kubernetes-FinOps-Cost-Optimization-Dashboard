@@ -42,8 +42,24 @@ class Settings(BaseSettings):
     run_scheduler_in_api: bool = True
     collection_interval_seconds: int = 30
 
+    allocation_interval_seconds: int = 300
+    # Re-allocate this many recent hours each run so late-arriving samples count.
+    allocation_lookback_hours: int = 2
+    shared_namespaces: list[str] = Field(
+        default_factory=lambda: ["kube-system", "kube-public", "kube-node-lease", "monitoring"]
+    )
+
+    # --- Security -----------------------------------------------------------------
+    # Protects cluster-registry endpoints until user auth/RBAC lands (M4).
+    # Unset = open (dev only; a warning is logged in prod).
+    admin_api_key: str | None = None
+    max_samples_per_request: int = 5000
+
     # --- Demo data --------------------------------------------------------------
     seed_demo_data: bool = True
+    # The demo cluster is synthesised through the same ingestion code path a
+    # real agent uses; this many days of 5-minute history are back-filled.
+    demo_backfill_days: int = 14
 
     # --- Pricing / policy defaults (overridable at runtime via the Settings API) --
     default_cpu_hourly_rate: float = 0.048  # $ per vCPU-hour
@@ -52,7 +68,7 @@ class Settings(BaseSettings):
     evaluation_window_hours: int = 24
     safety_buffer_pct: float = 20.0
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "shared_namespaces", mode="before")
     @classmethod
     def _split_csv(cls, v):
         if isinstance(v, str) and not v.startswith("["):

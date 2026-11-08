@@ -1,0 +1,23 @@
+{
+  "provider": "gcp",
+  "currency": "USD",
+  "source": "Google Compute Engine on-demand list prices, us-central1. Refresh with your own billing export or override per cluster.",
+  "default_region": "us-central1",
+  "spot_discount": 0.70,
+  "region_multipliers": {
+    "us-central1": 1.0, "us-east1": 1.0, "us-west1": 1.0, "europe-west1": 1.10,
+    "europe-west4": 1.10, "asia-south1": 1.20, "asia-southeast1": 1.23
+  },
+  "instances": {
+    "e2-medium":      {"vcpu": 2,  "memory_gib": 4,  "hourly": 0.033503},
+    "e2-standard-2":  {"vcpu": 2,  "memory_gib": 8,  "hourly": 0.067006},
+    "e2-standard-4":  {"vcpu": 4,  "memory_gib": 16, "hourly": 0.134012},
+    "e2-standard-8":  {"vcpu": 8,  "memory_gib": 32, "hourly": 0.268024},
+    "e2-standard-16": {"vcpu": 16, "memory_gib": 64, "hourly": 0.536048},
+    "n2-standard-2":  {"vcpu": 2,  "memory_gib": 8,  "hourly": 0.097118},
+    "n2-standard-4":  {"vcpu": 4,  "memory_gib": 16, "hourly": 0.194236},
+    "n2-standard-8":  {"vcpu": 8,  "memory_gib": 32, "hourly": 0.388472},
+    "n2-highmem-4":   {"vcpu": 4,  "memory_gib": 32, "hourly": 0.262028},
+    "n2-highcpu-8":   {"vcpu": 8,  "memory_gib": 8,  "hourly": 0.286824}
+  }
+}

@@ -120,6 +120,33 @@ cd backend && pip install -r requirements-dev.txt && ruff check . && pytest
 
 All settings are environment variables prefixed with `FINOPS_` (see `backend/app/core/config.py`).
 
+### Multi-cluster ingestion & cost allocation (M1)
+
+Each cluster is registered once and gets an agent token (only its SHA-256 hash is stored):
+
+```bash
+curl -X POST localhost:8000/api/v1/clusters -H 'Content-Type: application/json' \
+     -d '{"name": "prod-eu", "provider": "aws", "region": "eu-central-1"}'   # -> agent_token, shown once
+```
+
+| Method | Endpoint | Purpose |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/ingest/inventory` | Agent: nodes (instance type, spot/on-demand, creation time) and workload owners with labels |
+| `POST` | `/api/v1/ingest/samples` | Agent: 5-minute container usage samples + node heartbeats (idempotent) |
+| `GET` | `/api/v1/clusters/{id}/summary` | Run rate, idle %, efficiency, spot share |
+| `GET` | `/api/v1/clusters/{id}/allocation?window=7d&aggregate=label:team&shared=distribute` | Showback/chargeback by `namespace`, `workload`, `node`, `pod` or any label |
+| `GET` | `/api/v1/clusters/{id}/cost-timeseries?window=30d&step=1d` | Daily/hourly cost by top namespaces, plus idle |
+
+**How cost is allocated** (OpenCost-compatible): each node's hourly price comes from the agent, per-cluster
+custom rates, or the AWS/GCP/Azure catalogs in `backend/app/pricing/catalogs` (region multipliers, spot discount),
+and is split into per-core and per-GiB prices. Containers pay for `max(request, usage)`; capacity nobody
+reserved is reported as **idle cost**; `kube-system`/`monitoring` are **shared cost**, shown separately or
+spread over teams. Node heartbeats make autoscaled and spot nodes cost only while they run. Container cost +
+idle cost always reconciles to the node bill (tested).
+
+The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads,
+14 days of 5-minute history) is generated through the same ingestion code an agent uses.
+
 ## ⚡ Quick Start Guide
 
 ### Prerequisites

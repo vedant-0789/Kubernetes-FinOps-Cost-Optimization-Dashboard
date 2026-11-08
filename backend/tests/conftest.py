@@ -16,6 +16,7 @@ os.environ["FINOPS_ENVIRONMENT"] = "test"
 os.environ["FINOPS_RUN_SCHEDULER_IN_API"] = "false"
 os.environ["FINOPS_AUTO_MIGRATE"] = "true"
 os.environ["FINOPS_SEED_DEMO_DATA"] = "true"
+os.environ["FINOPS_DEMO_BACKFILL_DAYS"] = "2"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

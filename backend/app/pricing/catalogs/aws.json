@@ -1,0 +1,34 @@
+{
+  "provider": "aws",
+  "currency": "USD",
+  "source": "AWS EC2 Linux on-demand list prices, us-east-1. Refresh with your own billing export or override per cluster.",
+  "default_region": "us-east-1",
+  "spot_discount": 0.65,
+  "region_multipliers": {
+    "us-east-1": 1.0, "us-east-2": 1.0, "us-west-2": 1.0, "us-west-1": 1.17,
+    "eu-west-1": 1.11, "eu-central-1": 1.20, "ap-south-1": 1.05, "ap-southeast-1": 1.25, "ap-northeast-1": 1.29
+  },
+  "instances": {
+    "t3.medium":   {"vcpu": 2,  "memory_gib": 4,   "hourly": 0.0416},
+    "t3.large":    {"vcpu": 2,  "memory_gib": 8,   "hourly": 0.0832},
+    "t3.xlarge":   {"vcpu": 4,  "memory_gib": 16,  "hourly": 0.1664},
+    "t3.2xlarge":  {"vcpu": 8,  "memory_gib": 32,  "hourly": 0.3328},
+    "m5.large":    {"vcpu": 2,  "memory_gib": 8,   "hourly": 0.096},
+    "m5.xlarge":   {"vcpu": 4,  "memory_gib": 16,  "hourly": 0.192},
+    "m5.2xlarge":  {"vcpu": 8,  "memory_gib": 32,  "hourly": 0.384},
+    "m5.4xlarge":  {"vcpu": 16, "memory_gib": 64,  "hourly": 0.768},
+    "m6i.large":   {"vcpu": 2,  "memory_gib": 8,   "hourly": 0.096},
+    "m6i.xlarge":  {"vcpu": 4,  "memory_gib": 16,  "hourly": 0.192},
+    "m6i.2xlarge": {"vcpu": 8,  "memory_gib": 32,  "hourly": 0.384},
+    "m7g.large":   {"vcpu": 2,  "memory_gib": 8,   "hourly": 0.0816},
+    "m7g.xlarge":  {"vcpu": 4,  "memory_gib": 16,  "hourly": 0.1632},
+    "c5.large":    {"vcpu": 2,  "memory_gib": 4,   "hourly": 0.085},
+    "c5.xlarge":   {"vcpu": 4,  "memory_gib": 8,   "hourly": 0.17},
+    "c5.2xlarge":  {"vcpu": 8,  "memory_gib": 16,  "hourly": 0.34},
+    "c5.4xlarge":  {"vcpu": 16, "memory_gib": 32,  "hourly": 0.68},
+    "r5.large":    {"vcpu": 2,  "memory_gib": 16,  "hourly": 0.126},
+    "r5.xlarge":   {"vcpu": 4,  "memory_gib": 32,  "hourly": 0.252},
+    "r5.2xlarge":  {"vcpu": 8,  "memory_gib": 64,  "hourly": 0.504},
+    "g4dn.xlarge": {"vcpu": 4,  "memory_gib": 16,  "hourly": 0.526, "gpu": 1}
+  }
+}
