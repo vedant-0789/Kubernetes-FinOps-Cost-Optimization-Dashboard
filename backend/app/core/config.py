@@ -55,6 +55,26 @@ class Settings(BaseSettings):
     rightsizing_strategy: str = "slo_aware"
     min_monthly_savings: float = 1.0   # don't surface downsizes worth less than this
 
+    # --- Users & auth (M4) ----------------------------------------------------------
+    # Off only for local development and the test-suite; the Helm chart and
+    # docker-compose turn it on.
+    auth_required: bool = True
+    jwt_secret: str | None = None          # required when auth_required in prod
+    jwt_ttl_minutes: int = 60
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
+
+    # --- Remediation guardrails (M4) -----------------------------------------------------
+    require_two_person_approval: bool = True
+    protected_namespaces: list[str] = Field(
+        default_factory=lambda: ["kube-system", "kube-public", "kube-node-lease"]
+    )
+    change_window_utc: str = "00:00-24:00"   # e.g. "02:00-06:00"; agents only receive actions inside it
+    max_actions_per_cluster_per_hour: int = 20
+    remediation_verify_minutes: int = 30     # watch period after apply before marking verified
+    rollback_on_oom: bool = True
+    rollback_throttle_share: float = 0.25    # roll back if >25 % of the window is throttled after apply
+
     # --- Security -----------------------------------------------------------------
     # Protects cluster-registry endpoints until user auth/RBAC lands (M4).
     # Unset = open (dev only; a warning is logged in prod).
@@ -74,7 +94,7 @@ class Settings(BaseSettings):
     evaluation_window_hours: int = 24
     safety_buffer_pct: float = 20.0
 
-    @field_validator("cors_origins", "shared_namespaces", mode="before")
+    @field_validator("cors_origins", "shared_namespaces", "protected_namespaces", mode="before")
     @classmethod
     def _split_csv(cls, v):
         if isinstance(v, str) and not v.startswith("["):

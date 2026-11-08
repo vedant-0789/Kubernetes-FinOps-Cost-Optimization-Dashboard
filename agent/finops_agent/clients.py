@@ -38,6 +38,13 @@ class ServerClient:
         self.http = http or httpx.Client(timeout=timeout)
         self.headers = {"Authorization": f"Bearer {token}", "User-Agent": f"kubefinops-agent/{__version__}"}
 
+    def get(self, path: str) -> dict:
+        r = self.http.get(f"{self.base_url}{path}", headers=self.headers)
+        if r.status_code in (401, 403):
+            raise FatalPushError(f"GET {path} -> {r.status_code}: {r.text[:300]}")
+        r.raise_for_status()
+        return r.json()
+
     def post(self, path: str, payload: dict) -> dict:
         for attempt in range(self.max_retries + 1):
             try:

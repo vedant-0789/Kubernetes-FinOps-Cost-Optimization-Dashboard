@@ -10,8 +10,14 @@ config:
   FINOPS_SEED_DEMO_DATA: "true"        # keep the synthetic demo-aws-prod cluster alongside the real one
   FINOPS_DEMO_BACKFILL_DAYS: "14"
   FINOPS_ALLOCATION_INTERVAL_SECONDS: "120"
+  FINOPS_AUTH_REQUIRED: "true"
+  FINOPS_REMEDIATION_VERIFY_MINUTES: "5"   # short watch period for demos
+  FINOPS_ANALYSIS_INTERVAL_SECONDS: "300"
 secrets:
   adminApiKey: kind-local-admin-key   # local only
+  bootstrapAdmin:
+    email: admin@kubefinops.local
+    password: kind-local-admin-password
 database:
   bundled:
     enabled: true

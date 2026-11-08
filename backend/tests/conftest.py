@@ -17,6 +17,8 @@ os.environ["FINOPS_RUN_SCHEDULER_IN_API"] = "false"
 os.environ["FINOPS_AUTO_MIGRATE"] = "true"
 os.environ["FINOPS_SEED_DEMO_DATA"] = "true"
 os.environ["FINOPS_DEMO_BACKFILL_DAYS"] = "2"
+# Most tests exercise features, not auth; tests/test_auth.py switches it on.
+os.environ["FINOPS_AUTH_REQUIRED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -38,3 +40,12 @@ def db():
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture
+def auth_on(monkeypatch):
+    """Turn real authentication on for one test."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "auth_required", True)
+    monkeypatch.setattr(settings, "jwt_secret", "test-secret-" + "x" * 32)

@@ -97,6 +97,7 @@ spec:
             - { name: FINOPS_AGENT_PROMETHEUS_URL, value: {{ .Values.agent.prometheusUrl | quote }} }
             - { name: FINOPS_AGENT_BACKFILL_HOURS, value: {{ .Values.agent.backfillHours | quote }} }
             - { name: FINOPS_AGENT_EXCLUDED_NAMESPACES, value: {{ join "," .Values.agent.excludedNamespaces | quote }} }
+            - { name: FINOPS_AGENT_REMEDIATION_ENABLED, value: {{ .Values.rbac.allowRemediation | quote }} }
             - name: FINOPS_AGENT_TOKEN
               valueFrom: { secretKeyRef: { name: {{ $secret }}, key: token } }
           ports:

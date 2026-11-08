@@ -3,13 +3,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.security import require_admin
+from app.core.auth import require_viewer
 from app.db.database import get_db
 from app.routers.clusters import get_cluster_or_404
 from app.schemas.platform import AllocationReport, ClusterSummary, TimeseriesPoint
 from app.services.allocation_query import allocation_report, cluster_summary, cost_timeseries
 
-router = APIRouter(prefix="/clusters/{cluster_id}", tags=["Cost allocation"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/clusters/{cluster_id}", tags=["Cost allocation"], dependencies=[Depends(require_viewer)])
 
 
 @router.get("/summary", response_model=ClusterSummary)

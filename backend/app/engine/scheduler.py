@@ -86,6 +86,12 @@ def _analyze(db) -> None:
     run_analysis(db)
 
 
+def _verify(db) -> None:
+    from app.services.remediation import verify_applied
+
+    verify_applied(db)
+
+
 # Kept for the worker's "run once at start" call and existing imports.
 periodic_metrics_collection = _instrumented("collect", _legacy_collect)
 
@@ -103,7 +109,8 @@ def start_scheduler(interval_seconds: int = 30):
         return
     jobs = [("collect", _legacy_collect, interval_seconds),
             ("allocate", _allocate, settings.allocation_interval_seconds),
-            ("analyze", _analyze, settings.analysis_interval_seconds)]
+            ("analyze", _analyze, settings.analysis_interval_seconds),
+            ("verify", _verify, 60)]
     if settings.seed_demo_data:
         jobs.append(("demo", _demo_tick, 60))
     for name, fn, every in jobs:

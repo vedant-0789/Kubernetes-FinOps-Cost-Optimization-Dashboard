@@ -15,13 +15,21 @@ config:
   FINOPS_SEED_DEMO_DATA: "false"
   FINOPS_COLLECTION_INTERVAL_SECONDS: "30"
   FINOPS_ALLOCATION_INTERVAL_SECONDS: "300"
+  FINOPS_AUTH_REQUIRED: "true"
+  FINOPS_REQUIRE_TWO_PERSON_APPROVAL: "true"
+  FINOPS_CHANGE_WINDOW_UTC: "00:00-24:00"
+  FINOPS_REMEDIATION_VERIFY_MINUTES: "30"
 
 # Secrets. Either set values here (the chart creates a Secret) or point
 # existingSecret at one with keys FINOPS_DATABASE_URL and FINOPS_ADMIN_API_KEY.
 secrets:
   existingSecret: ""
-  adminApiKey: ""          # strongly recommended; empty = registry endpoints unauthenticated
+  adminApiKey: ""          # optional machine/automation key (acts as admin)
   databaseUrl: ""          # required when database.bundled.enabled=false
+  jwtSecret: ""            # empty = generated once and kept across upgrades
+  bootstrapAdmin:          # first admin, created only if there are no users yet
+    email: ""
+    password: ""
 
 database:
   bundled:

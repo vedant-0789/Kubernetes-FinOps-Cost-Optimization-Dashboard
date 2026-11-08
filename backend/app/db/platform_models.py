@@ -308,3 +308,74 @@ class AnalysisRun(Base):
     last_run_at: Mapped[datetime.datetime] = mapped_column(DateTime)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     containers_analyzed: Mapped[int] = mapped_column(Integer, default=0)
+
+
+# --- M4: users, audit, remediation ---------------------------------------------------
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    password_hash: Mapped[str] = mapped_column(String(200))
+    role: Mapped[str] = mapped_column(String(20), default="viewer")   # viewer | operator | admin
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    last_login_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+
+
+class AuditEvent(Base):
+    """Append-only, hash-chained audit trail: each row stores SHA-256 of the
+    previous row's hash + its own content, so edits or deletions are detectable."""
+
+    __tablename__ = "audit_events"
+    __table_args__ = (Index("ix_audit_cluster_ts", "cluster_id", "ts"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ts: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    actor: Mapped[str] = mapped_column(String(254))
+    action: Mapped[str] = mapped_column(String(60), index=True)
+    cluster_id: Mapped[str | None] = mapped_column(String(36))
+    target: Mapped[str | None] = mapped_column(String(400))
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    prev_hash: Mapped[str] = mapped_column(String(64))
+    hash: Mapped[str] = mapped_column(String(64), unique=True)
+
+
+class RemediationAction(Base):
+    r"""A change to a workload, from proposal to verified (or rolled back).
+
+    dry_run_pending -> pending_approval -> approved -> applied -> verified
+                    \-> dry_run_failed     \-> rejected  \-> failed  \-> rolled_back
+    """
+
+    __tablename__ = "remediation_actions"
+    __table_args__ = (Index("ix_remediation_cluster_status", "cluster_id", "status"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(String(20))            # RIGHTSIZE | SCALE | ROLLBACK
+    status: Mapped[str] = mapped_column(String(20), default="dry_run_pending", index=True)
+    namespace: Mapped[str] = mapped_column(String(63))
+    workload_kind: Mapped[str] = mapped_column(String(40))
+    workload_name: Mapped[str] = mapped_column(String(253))
+    container: Mapped[str | None] = mapped_column(String(253))
+    patch: Mapped[dict] = mapped_column(JSON)               # strategic-merge patch for the workload
+    recommendation_id: Mapped[int | None] = mapped_column(Integer)
+    finding_id: Mapped[int | None] = mapped_column(Integer)
+    rollback_of: Mapped[int | None] = mapped_column(Integer)
+    expected_monthly_savings: Mapped[float] = mapped_column(Float, default=0.0)
+    dry_run_diff: Mapped[dict | None] = mapped_column(JSON)
+    previous_spec: Mapped[dict | None] = mapped_column(JSON)  # captured by the agent before applying
+    verification: Mapped[dict | None] = mapped_column(JSON)
+    error: Mapped[str | None] = mapped_column(String(2000))
+    reason: Mapped[str | None] = mapped_column(String(500))
+    requested_by: Mapped[str] = mapped_column(String(254))
+    approved_by: Mapped[str | None] = mapped_column(String(254))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    dispatched_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+    applied_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+    verified_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
