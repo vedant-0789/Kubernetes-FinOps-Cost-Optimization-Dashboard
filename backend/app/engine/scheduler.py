@@ -80,6 +80,12 @@ def _allocate(db) -> None:
     run_allocation(db)
 
 
+def _analyze(db) -> None:
+    from app.services.analysis import run_analysis
+
+    run_analysis(db)
+
+
 # Kept for the worker's "run once at start" call and existing imports.
 periodic_metrics_collection = _instrumented("collect", _legacy_collect)
 
@@ -89,13 +95,15 @@ def run_all_once() -> None:
     if settings.seed_demo_data:
         _instrumented("demo", _demo_tick)()
     _instrumented("allocate", _allocate)()
+    _instrumented("analyze", _analyze)()
 
 
 def start_scheduler(interval_seconds: int = 30):
     if scheduler.running:
         return
     jobs = [("collect", _legacy_collect, interval_seconds),
-            ("allocate", _allocate, settings.allocation_interval_seconds)]
+            ("allocate", _allocate, settings.allocation_interval_seconds),
+            ("analyze", _analyze, settings.analysis_interval_seconds)]
     if settings.seed_demo_data:
         jobs.append(("demo", _demo_tick, 60))
     for name, fn, every in jobs:

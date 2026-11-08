@@ -172,6 +172,27 @@ kubectl -n finops port-forward svc/finops-server-api 8000:8000   # http://localh
 The same charts install on EKS/GKE/AKS: point `secrets.databaseUrl` at a managed PostgreSQL with TimescaleDB,
 set `secrets.adminApiKey`, enable `ingress`, and install `finops-agent` in each cluster with its own token.
 
+### SLO-aware right-sizing & waste detection (M3)
+
+`backend/app/engines/rightsizing.py` implements three strategies on the same 5-minute history (all replicas of a
+workload pooled):
+
+| Strategy | CPU request | Memory request |
+| :--- | :--- | :--- |
+| **`slo_aware`** (default) | (1-ε) recency-weighted quantile of *peak* CPU (ε = 1 %), + headroom from day-to-day variability of the daily peak; **censoring correction** when throttled at the limit; HPA-aware floor | peak working set + volatility headroom; each OOM kill treated as demand ≥ limit; leak detection blocks reductions |
+| `vpa` | VPA-style p90 + 15 % (24 h decay) | p90 of peaks + 15 %, OOM bump ×1.2 |
+| `p95_buffer` | p95 of mean usage + 20 % | p95 of mean usage + 20 % |
+
+Every recommendation carries evidence, a confidence (history × completeness), a risk label, and is capped at
+−50 % per step. `GET .../recommendations/{id}/compare` runs all three side by side and reports how often each
+would have been exceeded by real peaks.
+
+`backend/app/engines/waste.py` detects **idle workloads**, **orphaned volumes** (priced per storage class),
+**LoadBalancers without endpoints**, and **consolidatable nodes** (best-fit simulation that never double-books
+free capacity). An idle workload gets an idle finding *instead of* a right-sizing recommendation, so
+`GET .../savings` never counts the same dollar twice (node consolidation is reported separately because it
+overlaps with right-sizing). Dismissed items stay dismissed; fixed items resolve automatically.
+
 The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads,
 14 days of 5-minute history) is generated through the same ingestion code an agent uses.
 

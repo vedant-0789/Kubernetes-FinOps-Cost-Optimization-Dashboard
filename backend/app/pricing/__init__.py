@@ -85,3 +85,18 @@ def resolve_node_price(
         hourly *= 0.35
     cpu, ram = split_node_price(hourly, vcpu, memory_gib)
     return NodePrice(hourly, cpu, ram, "fallback")
+
+
+DEFAULT_STORAGE_GIB_MONTH = 0.10   # $/GiB-month when a storage class is unknown
+DEFAULT_LB_HOURLY = 0.025          # $/hour per cloud load balancer
+
+
+def storage_price_gib_month(provider: str, storage_class: str | None) -> float:
+    prices = load_catalog(provider).get("storage_gib_month", {})
+    return prices.get(storage_class or "", prices.get("default", DEFAULT_STORAGE_GIB_MONTH))
+
+
+def load_balancer_hourly(provider: str) -> float:
+    if provider == "onprem":
+        return 0.0
+    return load_catalog(provider).get("load_balancer_hourly", DEFAULT_LB_HOURLY)

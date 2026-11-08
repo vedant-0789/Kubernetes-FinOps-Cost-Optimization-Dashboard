@@ -20,7 +20,16 @@ from sqlalchemy.orm import Session
 
 from app.core.security import new_agent_token
 from app.db.platform_models import Cluster, UsageSample, utcnow
-from app.schemas.platform import InventoryIn, NodeIn, NodeSampleIn, SampleIn, WorkloadIn
+from app.schemas.platform import (
+    AutoscalerIn,
+    InventoryIn,
+    NodeIn,
+    NodeSampleIn,
+    SampleIn,
+    ServiceIn,
+    VolumeIn,
+    WorkloadIn,
+)
 from app.services.ingestion import ingest_inventory, ingest_samples
 
 logger = logging.getLogger("demo")
@@ -123,6 +132,28 @@ WORKLOADS = [
 ]
 
 
+# Storage and load balancers: one forgotten export volume and one LoadBalancer
+# left behind by a decommissioned frontend, next to healthy ones.
+VOLUMES = [
+    VolumeIn(namespace="monitoring", name="prometheus-db-prometheus-0", storage_class="gp3", capacity_gib=100,
+             mounted_by=["prometheus-0"], labels={"team": "platform"}),
+    VolumeIn(namespace="search", name="data-search-api-0", storage_class="gp3", capacity_gib=200,
+             mounted_by=["search-api-0"], labels={"team": "search"}),
+    VolumeIn(namespace="search", name="data-search-api-1", storage_class="gp3", capacity_gib=200,
+             mounted_by=["search-api-1"], labels={"team": "search"}),
+    VolumeIn(namespace="data", name="q3-export-backup", storage_class="gp3", capacity_gib=500, mounted_by=[],
+             labels={"team": "data"}),
+    VolumeIn(namespace="staging", name="qa-fixtures", storage_class="gp2", capacity_gib=50, mounted_by=[],
+             labels={"team": "qa"}),
+]
+SERVICES = [
+    ServiceIn(namespace="storefront", name="storefront-public", type="LoadBalancer", has_endpoints=True,
+              labels={"team": "web"}),
+    ServiceIn(namespace="storefront", name="legacy-checkout-lb", type="LoadBalancer", has_endpoints=False,
+              labels={"team": "payments"}),
+]
+
+
 def _pod_names(w: DemoWorkload) -> list[str]:
     if w.kind == "StatefulSet":
         return [f"{w.name}-{i}" for i in range(w.replicas)]
@@ -219,6 +250,11 @@ def inventory() -> InventoryIn:
         workloads=list({(w.namespace, w.kind, w.name): WorkloadIn(
             namespace=w.namespace, kind=w.kind, name=w.name, replicas=w.replicas, labels=w.labels)
             for w in reversed(WORKLOADS)}.values()),
+        volumes=VOLUMES,
+        services=SERVICES,
+        autoscalers=[AutoscalerIn(namespace="storefront", name="frontend-web", target_kind="Deployment",
+                                  target_name="frontend-web", cpu_target_utilization=0.6, min_replicas=3,
+                                  max_replicas=8)],
     )
 
 
