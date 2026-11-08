@@ -1,0 +1,18 @@
+[project]
+name = "kubefinops-agent"
+version = "2.0.0"
+description = "In-cluster agent for KubeFinOps: pushes Kubernetes inventory and Prometheus usage to the server"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

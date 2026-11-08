@@ -1,0 +1,75 @@
+{{- if .Values.database.bundled.enabled }}
+{{- $db := .Values.database.bundled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "finops.dbHost" . }}
+  labels: {{- include "finops.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: {{ $db.password | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "finops.dbHost" . }}
+  labels: {{- include "finops.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: postgres
+      port: 5432
+  selector: {{- include "finops.selector" (dict "root" . "component" "db") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "finops.dbHost" . }}
+  labels: {{- include "finops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db
+spec:
+  serviceName: {{ include "finops.dbHost" . }}
+  replicas: 1
+  selector:
+    matchLabels: {{- include "finops.selector" (dict "root" . "component" "db") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "finops.selector" (dict "root" . "component" "db") | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 70
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: timescaledb
+          image: {{ $db.image }}
+          env:
+            - { name: POSTGRES_USER, value: finops }
+            - { name: POSTGRES_DB, value: finops }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ include "finops.dbHost" . }}, key: POSTGRES_PASSWORD } }
+            - { name: TS_TUNE_MEMORY, value: "{{ $db.resources.limits.memory | default "2Gi" }}" }
+          ports:
+            - { name: postgres, containerPort: 5432 }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "finops", "-d", "finops"] }
+            periodSeconds: 5
+          livenessProbe:
+            exec: { command: ["pg_isready", "-U", "finops", "-d", "finops"] }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources: {{- toYaml $db.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $db.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $db.storage }}
+{{- end }}

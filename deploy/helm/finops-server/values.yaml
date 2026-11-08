@@ -1,0 +1,91 @@
+image:
+  server:
+    repository: ghcr.io/vedant-0789/kubefinops-server
+    tag: ""            # defaults to .Chart.AppVersion
+  ui:
+    repository: ghcr.io/vedant-0789/kubefinops-ui
+    tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Non-secret FINOPS_* settings (see backend/app/core/config.py).
+config:
+  FINOPS_LOG_LEVEL: INFO
+  FINOPS_LOG_JSON: "true"
+  FINOPS_SEED_DEMO_DATA: "false"
+  FINOPS_COLLECTION_INTERVAL_SECONDS: "30"
+  FINOPS_ALLOCATION_INTERVAL_SECONDS: "300"
+
+# Secrets. Either set values here (the chart creates a Secret) or point
+# existingSecret at one with keys FINOPS_DATABASE_URL and FINOPS_ADMIN_API_KEY.
+secrets:
+  existingSecret: ""
+  adminApiKey: ""          # strongly recommended; empty = registry endpoints unauthenticated
+  databaseUrl: ""          # required when database.bundled.enabled=false
+
+database:
+  bundled:
+    # Single-replica TimescaleDB for demos / small installs. Use a managed
+    # PostgreSQL (with the timescaledb extension) in production.
+    enabled: true
+    image: timescale/timescaledb:2.17.2-pg16
+    password: change-me
+    storage: 10Gi
+    storageClass: ""
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { memory: 2Gi }
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+worker:
+  # Exactly one: jobs are not leader-elected.
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+ui:
+  replicas: 2
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: false
+  className: ""
+  host: finops.example.com
+  annotations: {}
+  tls: []
+
+serviceMonitor:
+  # Requires the Prometheus Operator CRDs (e.g. kube-prometheus-stack).
+  enabled: false
+  labels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile: { type: RuntimeDefault }
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: [ALL] }
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

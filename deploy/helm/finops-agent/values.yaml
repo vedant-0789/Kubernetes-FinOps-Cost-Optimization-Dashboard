@@ -1,0 +1,33 @@
+image:
+  repository: ghcr.io/vedant-0789/kubefinops-agent
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+agent:
+  # URL of the KubeFinOps server API (in-cluster service or public ingress).
+  serverUrl: http://finops-server-api.finops:8000
+  # Agent token from `POST /api/v1/clusters`. Prefer existingSecret (key: token).
+  token: ""
+  existingSecret: ""
+  # Prometheus with cAdvisor + kube-state-metrics (kube-prometheus-stack default).
+  prometheusUrl: http://prometheus-operated.monitoring:9090
+  backfillHours: 6
+  excludedNamespaces: []
+
+rbac:
+  create: true
+  # M4 remediation (scale / patch requests). Off = strictly read-only agent.
+  allowRemediation: false
+
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 256Mi }
+
+serviceMonitor:
+  enabled: false
+  labels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

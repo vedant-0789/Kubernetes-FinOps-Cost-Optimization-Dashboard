@@ -1,0 +1,33 @@
+# Lean kube-prometheus-stack for a laptop: Prometheus + kube-state-metrics +
+# node-exporter + kubelet/cAdvisor scraping. Grafana and Alertmanager off.
+grafana:
+  enabled: false
+alertmanager:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+prometheus:
+  prometheusSpec:
+    scrapeInterval: 30s
+    retention: 2d
+    # Pick up ServiceMonitors from any release (the FinOps server's own metrics).
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { memory: 1536Mi }
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+kube-state-metrics:
+  # Workload labels (team, cost-center) on kube_*_labels series.
+  metricLabelsAllowlist:
+    - deployments=[team,cost-center]
+    - statefulsets=[team,cost-center]
+    - pods=[team,cost-center]

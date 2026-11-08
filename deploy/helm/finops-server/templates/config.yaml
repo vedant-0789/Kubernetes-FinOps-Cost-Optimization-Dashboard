@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "finops.fullname" . }}-config
+  labels: {{- include "finops.labels" . | nindent 4 }}
+data:
+  FINOPS_ENVIRONMENT: prod
+  FINOPS_AUTO_MIGRATE: "false"
+  FINOPS_RUN_SCHEDULER_IN_API: "false"
+  {{- range $k, $v := .Values.config }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}
+{{- if not .Values.secrets.existingSecret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "finops.secretName" . }}
+  labels: {{- include "finops.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  {{- if .Values.database.bundled.enabled }}
+  FINOPS_DATABASE_URL: {{ printf "postgresql+psycopg://finops:%s@%s:5432/finops" .Values.database.bundled.password (include "finops.dbHost" .) | quote }}
+  {{- else }}
+  FINOPS_DATABASE_URL: {{ required "secrets.databaseUrl is required when database.bundled.enabled=false" .Values.secrets.databaseUrl | quote }}
+  {{- end }}
+  {{- with .Values.secrets.adminApiKey }}
+  FINOPS_ADMIN_API_KEY: {{ . | quote }}
+  {{- end }}
+{{- end }}

@@ -144,6 +144,34 @@ reserved is reported as **idle cost**; `kube-system`/`monitoring` are **shared c
 spread over teams. Node heartbeats make autoscaled and spot nodes cost only while they run. Container cost +
 idle cost always reconciles to the node bill (tested).
 
+### In-cluster agent, Helm charts & local Kubernetes (M2)
+
+- **`agent/`** – a stateless Python agent (one Deployment per cluster, read-only RBAC). Every 5 minutes it reads
+  inventory from the Kubernetes API (node instance type / zone / spot labels from EKS, Karpenter, GKE, AKS;
+  workload owners and labels) and usage from Prometheus (cAdvisor + kube-state-metrics: CPU mean/peak, working
+  set, throttling, network, restarts, OOM kills, Pod→ReplicaSet→Deployment and Job→CronJob ownership), then
+  pushes both to the server with retries. On restart it re-sends a back-fill window; the server de-duplicates.
+- **`deploy/helm/finops-server`** – API (+ HPA, PDB, migration init container serialised by a PostgreSQL
+  advisory lock), single worker, UI, optional bundled TimescaleDB, Ingress, ServiceMonitor; non-root,
+  read-only root filesystem, dropped capabilities.
+- **`deploy/helm/finops-agent`** – agent with a read-only ClusterRole (no Secrets/ConfigMaps); write verbs only
+  with `rbac.allowRemediation=true`.
+- Node labels the agent understands beyond the cloud defaults: `finops.io/hourly-price` (explicit price, e.g.
+  on-prem) and `finops.io/capacity-cpu` / `finops.io/capacity-memory` (simulated clusters such as kind, whose
+  nodes all report the host's full capacity).
+
+One command builds everything and runs it on a local 4-node kind cluster (AWS-like node labels incl. a spot
+node), with kube-prometheus-stack and real demo workloads (over-provisioned API, idle deployment, CPU-throttled
+batch on spot, a memory leak that gets OOM-killed, an orphaned PVC, a LoadBalancer with no endpoints):
+
+```powershell
+.\deploy\scripts\up.ps1          # Windows   (Linux/macOS: deploy/scripts/up.sh)
+kubectl -n finops port-forward svc/finops-server-api 8000:8000   # http://localhost:8000/docs
+```
+
+The same charts install on EKS/GKE/AKS: point `secrets.databaseUrl` at a managed PostgreSQL with TimescaleDB,
+set `secrets.adminApiKey`, enable `ingress`, and install `finops-agent` in each cluster with its own token.
+
 The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads,
 14 days of 5-minute history) is generated through the same ingestion code an agent uses.
 
