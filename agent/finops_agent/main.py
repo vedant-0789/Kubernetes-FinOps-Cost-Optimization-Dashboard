@@ -33,7 +33,7 @@ class Agent:
         self.cfg = cfg
         self.prom = prom
         self.server = server
-        self.kube_apis = kube_apis  # (core, apps, batch) or None
+        self.kube_apis = kube_apis  # (core, apps, batch, autoscaling) or None
         self.clock = clock
         self.queries = render_queries(cfg.slot_seconds)
         self.next_slot: int | None = None
@@ -62,7 +62,8 @@ class Agent:
     def push_inventory(self) -> None:
         if self.kube_apis is None:
             return
-        payload = collect_inventory(*self.kube_apis, excluded_namespaces=self.cfg.excluded_namespaces)
+        core, apps, batch, autoscaling = self.kube_apis
+        payload = collect_inventory(core, apps, batch, self.cfg.excluded_namespaces, autoscaling)
         payload["agent_version"] = f"kubefinops-agent/{__version__}"
         self.server.post("/api/v1/ingest/inventory", payload)
         self.last_inventory = self.clock()
@@ -111,7 +112,7 @@ def _kube_apis():
         config.load_incluster_config()
     except config.ConfigException:
         config.load_kube_config()
-    return client.CoreV1Api(), client.AppsV1Api(), client.BatchV1Api()
+    return client.CoreV1Api(), client.AppsV1Api(), client.BatchV1Api(), client.AutoscalingV2Api()
 
 
 def main() -> None:

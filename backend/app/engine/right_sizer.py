@@ -2,7 +2,7 @@ import datetime
 
 from sqlalchemy.orm import Session
 
-from app.db.models import MetricsSnapshot, Recommendation
+from app.db.models import MetricsSnapshot, Recommendation, ZombieWorkload
 from app.engine.cost_calculator import CostCalculator
 
 
@@ -28,7 +28,13 @@ class RightSizer:
 
         buffer_factor = 1.0 + (safety_buffer_pct / 100.0)
 
+        # A zombie's whole cost is already counted as zombie waste; right-sizing
+        # it as well would count the same money twice in "potential savings".
+        zombie_pods = {f"{z.namespace}/{z.pod_name}" for z in db.query(ZombieWorkload).all()}
+
         for key, snap in pod_map.items():
+            if key in zombie_pods:
+                continue
             # Calculate recommended requests (p95 peak simulated + safety buffer)
             # Ensure minimum floor (0.05 CPU, 64MB RAM)
             rec_cpu = max(0.05, round(snap.cpu_usage * buffer_factor, 2))

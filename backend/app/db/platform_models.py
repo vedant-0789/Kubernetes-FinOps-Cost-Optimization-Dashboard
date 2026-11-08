@@ -175,3 +175,136 @@ class AllocationWatermark(Base):
 
     cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), primary_key=True)
     last_window_start: Mapped[datetime.datetime] = mapped_column(DateTime)
+
+
+# --- M3: extra inventory ------------------------------------------------------------
+
+
+class Volume(Base):
+    """PersistentVolumeClaim (orphaned-volume detection)."""
+
+    __tablename__ = "volumes"
+    __table_args__ = (UniqueConstraint("cluster_id", "namespace", "name", name="uq_volumes_identity"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), index=True)
+    namespace: Mapped[str] = mapped_column(String(63))
+    name: Mapped[str] = mapped_column(String(253))
+    storage_class: Mapped[str | None] = mapped_column(String(100))
+    capacity_gib: Mapped[float] = mapped_column(Float, default=0.0)
+    phase: Mapped[str] = mapped_column(String(20), default="Bound")
+    mounted_by: Mapped[list] = mapped_column(JSON, default=list)
+    labels: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+    first_seen: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    last_seen: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class ServiceInv(Base):
+    """Kubernetes Service (unused LoadBalancer detection)."""
+
+    __tablename__ = "services"
+    __table_args__ = (UniqueConstraint("cluster_id", "namespace", "name", name="uq_services_identity"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), index=True)
+    namespace: Mapped[str] = mapped_column(String(63))
+    name: Mapped[str] = mapped_column(String(253))
+    type: Mapped[str] = mapped_column(String(20), default="ClusterIP")
+    has_endpoints: Mapped[bool] = mapped_column(Boolean, default=True)
+    labels: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+    first_seen: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    last_seen: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Autoscaler(Base):
+    """HorizontalPodAutoscaler (right-sizing must not fight it)."""
+
+    __tablename__ = "autoscalers"
+    __table_args__ = (UniqueConstraint("cluster_id", "namespace", "name", name="uq_autoscalers_identity"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), index=True)
+    namespace: Mapped[str] = mapped_column(String(63))
+    name: Mapped[str] = mapped_column(String(253))
+    target_kind: Mapped[str] = mapped_column(String(40))
+    target_name: Mapped[str] = mapped_column(String(253))
+    cpu_target_utilization: Mapped[float | None] = mapped_column(Float)  # 0..1
+    min_replicas: Mapped[int | None] = mapped_column(Integer)
+    max_replicas: Mapped[int | None] = mapped_column(Integer)
+    first_seen: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    last_seen: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+# --- M3: analysis results -------------------------------------------------------------
+
+
+class RightsizingRecommendation(Base):
+    __tablename__ = "rightsizing_recommendations"
+    __table_args__ = (
+        UniqueConstraint("cluster_id", "namespace", "workload_kind", "workload_name", "container", "strategy",
+                         name="uq_rightsizing_identity"),
+        Index("ix_rightsizing_cluster_status", "cluster_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"))
+    namespace: Mapped[str] = mapped_column(String(63))
+    workload_kind: Mapped[str] = mapped_column(String(40))
+    workload_name: Mapped[str] = mapped_column(String(253))
+    container: Mapped[str] = mapped_column(String(253))
+    strategy: Mapped[str] = mapped_column(String(30), default="slo_aware")
+    action: Mapped[str] = mapped_column(String(20))          # downsize | upsize
+    # open -> applied | dismissed ; open -> resolved (no longer needed)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    replicas: Mapped[float] = mapped_column(Float, default=1.0)
+    current_cpu_request: Mapped[float] = mapped_column(Float)
+    current_mem_request: Mapped[float] = mapped_column(Float)
+    current_cpu_limit: Mapped[float | None] = mapped_column(Float)
+    current_mem_limit: Mapped[float | None] = mapped_column(Float)
+    recommended_cpu_request: Mapped[float] = mapped_column(Float)
+    recommended_mem_request: Mapped[float] = mapped_column(Float)
+    recommended_cpu_limit: Mapped[float | None] = mapped_column(Float)
+    recommended_mem_limit: Mapped[float | None] = mapped_column(Float)
+    monthly_savings: Mapped[float] = mapped_column(Float, default=0.0)  # negative = costs more (upsize)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    confidence_label: Mapped[str] = mapped_column(String(10), default="low")
+    risk: Mapped[str] = mapped_column(String(10), default="medium")
+    reasons: Mapped[list] = mapped_column(JSON, default=list)
+    evidence: Mapped[dict] = mapped_column(JSON, default=dict)
+    dismissed_reason: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class WasteFinding(Base):
+    __tablename__ = "waste_findings"
+    __table_args__ = (
+        UniqueConstraint("cluster_id", "kind", "namespace", "name", name="uq_waste_identity"),
+        Index("ix_waste_cluster_status", "cluster_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(30))
+    namespace: Mapped[str] = mapped_column(String(63), default="")   # "" for cluster-scoped (nodes)
+    name: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | dismissed | resolved
+    monthly_savings: Mapped[float] = mapped_column(Float, default=0.0)
+    risk: Mapped[str] = mapped_column(String(10), default="medium")
+    action: Mapped[str] = mapped_column(String(300))
+    evidence: Mapped[dict] = mapped_column(JSON, default=dict)
+    dismissed_reason: Mapped[str | None] = mapped_column(String(500))
+    first_detected: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    last_detected: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    resolved_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+
+
+class AnalysisRun(Base):
+    __tablename__ = "analysis_runs"
+
+    cluster_id: Mapped[str] = mapped_column(ForeignKey("clusters.id", ondelete="CASCADE"), primary_key=True)
+    last_run_at: Mapped[datetime.datetime] = mapped_column(DateTime)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    containers_analyzed: Mapped[int] = mapped_column(Integer, default=0)

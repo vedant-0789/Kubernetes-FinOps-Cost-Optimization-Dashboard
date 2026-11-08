@@ -63,11 +63,44 @@ class WorkloadIn(BaseModel):
     labels: dict[str, str] = Field(default_factory=dict)
 
 
+class VolumeIn(BaseModel):
+    namespace: str = Field(min_length=1, max_length=63)
+    name: str = K8sName
+    storage_class: str | None = Field(default=None, max_length=100)
+    capacity_gib: float = Field(ge=0)
+    phase: str = Field(default="Bound", max_length=20)
+    mounted_by: list[str] = Field(default_factory=list, description="Pods currently mounting the claim")
+    created_at: datetime.datetime | None = None
+    labels: dict[str, str] = Field(default_factory=dict)
+
+
+class ServiceIn(BaseModel):
+    namespace: str = Field(min_length=1, max_length=63)
+    name: str = K8sName
+    type: str = Field(default="ClusterIP", max_length=20)
+    has_endpoints: bool = True
+    created_at: datetime.datetime | None = None
+    labels: dict[str, str] = Field(default_factory=dict)
+
+
+class AutoscalerIn(BaseModel):
+    namespace: str = Field(min_length=1, max_length=63)
+    name: str = K8sName
+    target_kind: str = Field(max_length=40)
+    target_name: str = K8sName
+    cpu_target_utilization: float | None = Field(default=None, gt=0, le=10, description="0.7 = 70 %")
+    min_replicas: int | None = Field(default=None, ge=0)
+    max_replicas: int | None = Field(default=None, ge=0)
+
+
 class InventoryIn(BaseModel):
     agent_version: str | None = Field(default=None, max_length=40)
     collected_at: datetime.datetime | None = None
     nodes: list[NodeIn] = Field(default_factory=list, max_length=5000)
     workloads: list[WorkloadIn] = Field(default_factory=list, max_length=50000)
+    volumes: list[VolumeIn] = Field(default_factory=list, max_length=50000)
+    services: list[ServiceIn] = Field(default_factory=list, max_length=50000)
+    autoscalers: list[AutoscalerIn] = Field(default_factory=list, max_length=20000)
 
 
 class SampleIn(BaseModel):

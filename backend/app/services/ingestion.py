@@ -6,7 +6,17 @@ import datetime
 from prometheus_client import Counter
 from sqlalchemy.orm import Session
 
-from app.db.platform_models import Cluster, Node, NodeSample, UsageSample, Workload, utcnow
+from app.db.platform_models import (
+    Autoscaler,
+    Cluster,
+    Node,
+    NodeSample,
+    ServiceInv,
+    UsageSample,
+    Volume,
+    Workload,
+    utcnow,
+)
 from app.db.upsert import insert_ignore, upsert
 from app.pricing import resolve_node_price
 from app.schemas.platform import IngestResult, InventoryIn, NodeSampleIn, SampleIn
@@ -56,11 +66,31 @@ def ingest_inventory(db: Session, cluster: Cluster, payload: InventoryIn, now: d
                     labels=w.labels, first_seen=first_seen, last_seen=now) for w in payload.workloads]
     upsert(db, Workload, wl_rows, ["cluster_id", "namespace", "kind", "name"], ["replicas", "labels", "last_seen"])
 
+    ident = ["cluster_id", "namespace", "name"]
+    upsert(db, Volume, [dict(
+        cluster_id=cluster.id, namespace=v.namespace, name=v.name, storage_class=v.storage_class,
+        capacity_gib=v.capacity_gib, phase=v.phase, mounted_by=v.mounted_by, labels=v.labels,
+        created_at=_naive_utc(v.created_at) if v.created_at else None, first_seen=first_seen, last_seen=now,
+    ) for v in payload.volumes], ident,
+        ["storage_class", "capacity_gib", "phase", "mounted_by", "labels", "created_at", "last_seen"])
+    upsert(db, ServiceInv, [dict(
+        cluster_id=cluster.id, namespace=sv.namespace, name=sv.name, type=sv.type, has_endpoints=sv.has_endpoints,
+        labels=sv.labels, created_at=_naive_utc(sv.created_at) if sv.created_at else None,
+        first_seen=first_seen, last_seen=now,
+    ) for sv in payload.services], ident, ["type", "has_endpoints", "labels", "created_at", "last_seen"])
+    upsert(db, Autoscaler, [dict(
+        cluster_id=cluster.id, namespace=a.namespace, name=a.name, target_kind=a.target_kind,
+        target_name=a.target_name, cpu_target_utilization=a.cpu_target_utilization, min_replicas=a.min_replicas,
+        max_replicas=a.max_replicas, first_seen=first_seen, last_seen=now,
+    ) for a in payload.autoscalers], ident,
+        ["target_kind", "target_name", "cpu_target_utilization", "min_replicas", "max_replicas", "last_seen"])
+
     cluster.last_seen_at = now
     if payload.agent_version:
         cluster.agent_version = payload.agent_version
     db.commit()
-    return IngestResult(accepted=len(node_rows) + len(wl_rows))
+    return IngestResult(accepted=len(node_rows) + len(wl_rows) + len(payload.volumes) + len(payload.services)
+                        + len(payload.autoscalers))
 
 
 def _in_range(ts: datetime.datetime, now: datetime.datetime, enforce_age: bool) -> str | None:

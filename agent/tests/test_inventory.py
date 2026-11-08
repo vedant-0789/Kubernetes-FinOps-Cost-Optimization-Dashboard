@@ -51,7 +51,38 @@ def _obj(ns, name, labels=None, **spec):
               spec=NS(replicas=spec.get("replicas")), status=NS(desired_number_scheduled=spec.get("desired")))
 
 
+def _pod(ns, name, labels=None, claims=(), phase="Running", ready=True):
+    return NS(metadata=NS(namespace=ns, name=name, labels=labels or {}),
+              spec=NS(volumes=[NS(persistent_volume_claim=NS(claim_name=c)) for c in claims]),
+              status=NS(phase=phase, conditions=[NS(type="Ready", status="True" if ready else "False")]))
+
+
+def _pvc(ns, name, size):
+    return NS(metadata=NS(namespace=ns, name=name, labels={}, creation_timestamp=None),
+              spec=NS(storage_class_name="gp3", resources=NS(requests={"storage": size})),
+              status=NS(phase="Bound", capacity={"storage": size}))
+
+
+def _svc(name, selector, type_="LoadBalancer"):
+    return NS(metadata=NS(namespace="shop", name=name, labels={}, creation_timestamp=None),
+              spec=NS(type=type_, selector=selector))
+
+
 class FakeCore:
+    def list_pod_for_all_namespaces(self):
+        return NS(items=[_pod("db", "pg-0", {"app": "pg"}, claims=["data-pg-0"]),
+                         _pod("shop", "web-1", {"app": "web"}),
+                         _pod("shop", "old-1", {"app": "old"}, ready=False),
+                         _pod("batch", "done", claims=["scratch"], phase="Succeeded")])
+
+    def list_persistent_volume_claim_for_all_namespaces(self):
+        return NS(items=[_pvc("db", "data-pg-0", "50Gi"), _pvc("data", "old-export", "200Gi"),
+                         _pvc("batch", "scratch", "10Gi")])
+
+    def list_service_for_all_namespaces(self):
+        return NS(items=[_svc("web-lb", {"app": "web"}), _svc("old-lb", {"app": "old"}),
+                         _svc("ghost-lb", {"app": "nothing"}), _svc("web", {"app": "web"}, "ClusterIP")])
+
     def list_node(self):
         return NS(items=[NS(metadata=NS(name="n1", labels={"node.kubernetes.io/instance-type": "m5.large"},
                                         creation_timestamp=None), status=NS(capacity={"cpu": "2", "memory": "8Gi"}))])
@@ -84,3 +115,31 @@ def test_collect_inventory_lists_owners_and_skips_cronjob_children():
     assert kinds[("DaemonSet", "proxy")]["replicas"] == 3
     assert ("Job", "migrate-once") in kinds and ("Job", "etl-123") not in kinds
     assert ("Deployment", "x") not in kinds
+
+
+def test_volumes_know_who_mounts_them():
+    inv = collect_inventory(FakeCore(), FakeApps(), FakeBatch())
+    vols = {v["name"]: v for v in inv["volumes"]}
+    assert vols["data-pg-0"]["mounted_by"] == ["pg-0"] and vols["data-pg-0"]["capacity_gib"] == 50
+    assert vols["old-export"]["mounted_by"] == []
+    assert vols["scratch"]["mounted_by"] == []      # only a completed pod used it
+
+
+def test_load_balancers_need_a_ready_backend():
+    inv = collect_inventory(FakeCore(), FakeApps(), FakeBatch())
+    lbs = {s["name"]: s["has_endpoints"] for s in inv["services"]}
+    assert lbs == {"web-lb": True, "old-lb": False, "ghost-lb": False}  # ClusterIP skipped
+
+
+class FakeAutoscaling:
+    def list_horizontal_pod_autoscaler_for_all_namespaces(self):
+        cpu = NS(type="Resource", resource=NS(name="cpu", target=NS(average_utilization=70)))
+        return NS(items=[NS(metadata=NS(namespace="shop", name="web"),
+                            spec=NS(metrics=[cpu], scale_target_ref=NS(kind="Deployment", name="web"),
+                                    min_replicas=2, max_replicas=10))])
+
+
+def test_hpa_cpu_target_is_reported():
+    inv = collect_inventory(FakeCore(), FakeApps(), FakeBatch(), autoscaling=FakeAutoscaling())
+    [h] = inv["autoscalers"]
+    assert (h["target_name"], h["cpu_target_utilization"], h["max_replicas"]) == ("web", 0.7, 10)

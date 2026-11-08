@@ -49,6 +49,12 @@ class Settings(BaseSettings):
         default_factory=lambda: ["kube-system", "kube-public", "kube-node-lease", "monitoring"]
     )
 
+    # Right-sizing & waste analysis (M3)
+    analysis_interval_seconds: int = 900
+    analysis_window_days: int = 14
+    rightsizing_strategy: str = "slo_aware"
+    min_monthly_savings: float = 1.0   # don't surface downsizes worth less than this
+
     # --- Security -----------------------------------------------------------------
     # Protects cluster-registry endpoints until user auth/RBAC lands (M4).
     # Unset = open (dev only; a warning is logged in prod).

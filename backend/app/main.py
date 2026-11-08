@@ -13,6 +13,7 @@ from app.engine.scheduler import start_scheduler, stop_scheduler
 from app.routers import (
     actions,
     allocation,
+    analysis,
     clusters,
     health,
     ingest,
@@ -48,6 +49,9 @@ async def lifespan(app: FastAPI):
             MockDataGenerator.seed_initial_data(db)
             ensure_demo_cluster(db, settings.demo_backfill_days)
             run_allocation(db)
+            from app.services.analysis import run_analysis
+
+            run_analysis(db)
         finally:
             db.close()
 
@@ -81,7 +85,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     for r in (overview, namespaces, zombies, recommendations, actions, lifecycle, settings_router,
-              clusters, ingest, allocation):
+              clusters, ingest, allocation, analysis):
         app.include_router(r.router, prefix=API_V1)
 
     @app.get("/", include_in_schema=False)

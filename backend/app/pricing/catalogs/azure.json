@@ -3,18 +3,59 @@
   "currency": "USD",
   "source": "Azure Linux VM pay-as-you-go list prices, eastus. Refresh with your own billing export or override per cluster.",
   "default_region": "eastus",
-  "spot_discount": 0.70,
+  "spot_discount": 0.7,
   "region_multipliers": {
-    "eastus": 1.0, "eastus2": 1.0, "westus2": 1.0, "westeurope": 1.13,
-    "northeurope": 1.07, "centralindia": 1.05, "southeastasia": 1.15
+    "eastus": 1.0,
+    "eastus2": 1.0,
+    "westus2": 1.0,
+    "westeurope": 1.13,
+    "northeurope": 1.07,
+    "centralindia": 1.05,
+    "southeastasia": 1.15
   },
   "instances": {
-    "Standard_B2s":    {"vcpu": 2,  "memory_gib": 4,  "hourly": 0.0416},
-    "Standard_B4ms":   {"vcpu": 4,  "memory_gib": 16, "hourly": 0.166},
-    "Standard_D2s_v5": {"vcpu": 2,  "memory_gib": 8,  "hourly": 0.096},
-    "Standard_D4s_v5": {"vcpu": 4,  "memory_gib": 16, "hourly": 0.192},
-    "Standard_D8s_v5": {"vcpu": 8,  "memory_gib": 32, "hourly": 0.384},
-    "Standard_E4s_v5": {"vcpu": 4,  "memory_gib": 32, "hourly": 0.252},
-    "Standard_F4s_v2": {"vcpu": 4,  "memory_gib": 8,  "hourly": 0.169}
+    "Standard_B2s": {
+      "vcpu": 2,
+      "memory_gib": 4,
+      "hourly": 0.0416
+    },
+    "Standard_B4ms": {
+      "vcpu": 4,
+      "memory_gib": 16,
+      "hourly": 0.166
+    },
+    "Standard_D2s_v5": {
+      "vcpu": 2,
+      "memory_gib": 8,
+      "hourly": 0.096
+    },
+    "Standard_D4s_v5": {
+      "vcpu": 4,
+      "memory_gib": 16,
+      "hourly": 0.192
+    },
+    "Standard_D8s_v5": {
+      "vcpu": 8,
+      "memory_gib": 32,
+      "hourly": 0.384
+    },
+    "Standard_E4s_v5": {
+      "vcpu": 4,
+      "memory_gib": 32,
+      "hourly": 0.252
+    },
+    "Standard_F4s_v2": {
+      "vcpu": 4,
+      "memory_gib": 8,
+      "hourly": 0.169
+    }
+  },
+  "load_balancer_hourly": 0.025,
+  "storage_gib_month": {
+    "managed-csi": 0.05,
+    "managed-csi-premium": 0.15,
+    "managed": 0.05,
+    "managed-premium": 0.15,
+    "default": 0.1
   }
 }
