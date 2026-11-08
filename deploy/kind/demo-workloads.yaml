@@ -1,0 +1,168 @@
+# Real workloads that reproduce the waste patterns KubeFinOps detects.
+# Usage is genuinely low/high/leaky - nothing here is simulated in the server.
+apiVersion: v1
+kind: Namespace
+metadata: { name: shop, labels: { team: web } }
+---
+apiVersion: v1
+kind: Namespace
+metadata: { name: data, labels: { team: data } }
+---
+apiVersion: v1
+kind: Namespace
+metadata: { name: ml, labels: { team: ml } }
+---
+# 1. Right-sized-ish web tier with a load generator (real CPU + network).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: shop
+  labels: { team: web, cost-center: cc-100 }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: web } }
+  template:
+    metadata: { labels: { app: web, team: web } }
+    spec:
+      nodeSelector: { finops.io/pool: general }
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: web, namespace: shop }
+spec:
+  selector: { app: web }
+  ports: [{ port: 80 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  namespace: shop
+  labels: { team: web, cost-center: cc-100 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: loadgen } }
+  template:
+    metadata: { labels: { app: loadgen } }
+    spec:
+      containers:
+        - name: loadgen
+          image: busybox:1.36
+          command: ["sh", "-c", "while true; do wget -q -O /dev/null http://web.shop.svc; done"]
+          resources:
+            requests: { cpu: 50m, memory: 16Mi }
+            limits: { cpu: 200m, memory: 32Mi }
+---
+# 2. Over-provisioned API: requests 1 vCPU / 1 GiB, uses almost nothing.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: shop
+  labels: { team: payments, cost-center: cc-200 }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: checkout-api } }
+  template:
+    metadata: { labels: { app: checkout-api, team: payments } }
+    spec:
+      nodeSelector: { finops.io/pool: general }
+      containers:
+        - name: api
+          image: python:3.12-alpine
+          command: ["python", "-m", "http.server", "8080"]
+          resources:
+            requests: { cpu: "1", memory: 1Gi }
+---
+# 3. Forgotten workload: big requests, zero traffic -> idle / zombie.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report-generator
+  namespace: data
+  labels: { team: data, cost-center: cc-400 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: report-generator } }
+  template:
+    metadata: { labels: { app: report-generator, team: data } }
+    spec:
+      containers:
+        - name: worker
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+---
+# 4. CPU-hungry batch on the spot pool, capped by its limit -> throttling.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-batch
+  namespace: data
+  labels: { team: data, cost-center: cc-400 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: cpu-batch } }
+  template:
+    metadata: { labels: { app: cpu-batch, team: data } }
+    spec:
+      nodeSelector: { finops.io/pool: batch }
+      containers:
+        - name: burn
+          image: busybox:1.36
+          command: ["sh", "-c", "while true; do :; done"]
+          resources:
+            requests: { cpu: 100m, memory: 16Mi }
+            limits: { cpu: 250m, memory: 32Mi }
+---
+# 5. Memory leak: grows ~1 MiB/s until the 192 MiB limit -> OOMKilled, restarts.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommender
+  namespace: ml
+  labels: { team: ml, cost-center: cc-600 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: recommender } }
+  template:
+    metadata: { labels: { app: recommender, team: ml } }
+    spec:
+      containers:
+        - name: model
+          image: python:3.12-alpine
+          command: ["python", "-c", "import time\nleak = []\nwhile True:\n    leak.append(bytearray(1024 * 1024))\n    time.sleep(1)"]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 192Mi }
+---
+# 6. Orphaned volume: a claim nothing mounts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: old-export
+  namespace: data
+  labels: { team: data }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 5Gi } }
+---
+# 7. LoadBalancer with no endpoints (selector matches nothing): billed by the cloud, serves nothing.
+apiVersion: v1
+kind: Service
+metadata:
+  name: legacy-public
+  namespace: shop
+  labels: { team: web }
+spec:
+  type: LoadBalancer
+  selector: { app: decommissioned-frontend }
+  ports: [{ port: 80 }]

@@ -1,0 +1,31 @@
+# finops-server overrides for the local kind cluster (images built and
+# side-loaded by deploy/scripts/up.*).
+image:
+  server: { repository: kubefinops-server, tag: dev }
+  ui: { repository: kubefinops-ui, tag: dev }
+  pullPolicy: Never
+config:
+  FINOPS_LOG_LEVEL: INFO
+  FINOPS_LOG_JSON: "true"
+  FINOPS_SEED_DEMO_DATA: "true"        # keep the synthetic demo-aws-prod cluster alongside the real one
+  FINOPS_DEMO_BACKFILL_DAYS: "14"
+  FINOPS_ALLOCATION_INTERVAL_SECONDS: "120"
+secrets:
+  adminApiKey: kind-local-admin-key   # local only
+database:
+  bundled:
+    enabled: true
+    password: kind-local-db-password
+    storage: 2Gi
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 1Gi }
+api:
+  replicas: 1
+  podDisruptionBudget: { enabled: false }
+ui:
+  replicas: 1
+serviceMonitor:
+  enabled: true
+nodeSelector:
+  finops.io/pool: general

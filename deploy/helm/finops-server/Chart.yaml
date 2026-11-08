@@ -1,0 +1,8 @@
+apiVersion: v2
+name: finops-server
+description: KubeFinOps central server - API, worker, UI and (optionally) a bundled TimescaleDB
+type: application
+version: 0.2.0
+appVersion: "2.0.0"
+keywords: [finops, kubernetes, cost, opencost, rightsizing]
+home: https://github.com/vedant-0789/Kubernetes-FinOps-Cost-Optimization-Dashboard

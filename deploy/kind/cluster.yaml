@@ -1,0 +1,44 @@
+# Local 4-node cluster that looks like a small AWS cluster to KubeFinOps:
+# nodes carry the standard instance-type / zone / capacity-type labels that
+# EKS + Karpenter set, so the server prices them from the AWS catalog.
+# kind nodes all report the host's full CPU/RAM, so finops.io/capacity-*
+# labels give each node the capacity of the instance type it pretends to be.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kubefinops
+nodes:
+  - role: control-plane
+    labels:
+      node.kubernetes.io/instance-type: m5.large
+      finops.io/capacity-cpu: "2"
+      finops.io/capacity-memory: 8Gi
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1a
+      karpenter.sh/capacity-type: on-demand
+  - role: worker
+    labels:
+      node.kubernetes.io/instance-type: m5.xlarge
+      finops.io/capacity-cpu: "4"
+      finops.io/capacity-memory: 16Gi
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1a
+      karpenter.sh/capacity-type: on-demand
+      finops.io/pool: general
+  - role: worker
+    labels:
+      node.kubernetes.io/instance-type: m5.xlarge
+      finops.io/capacity-cpu: "4"
+      finops.io/capacity-memory: 16Gi
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1b
+      karpenter.sh/capacity-type: on-demand
+      finops.io/pool: general
+  - role: worker
+    labels:
+      node.kubernetes.io/instance-type: c5.2xlarge
+      finops.io/capacity-cpu: "8"
+      finops.io/capacity-memory: 16Gi
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1c
+      karpenter.sh/capacity-type: spot
+      finops.io/pool: batch

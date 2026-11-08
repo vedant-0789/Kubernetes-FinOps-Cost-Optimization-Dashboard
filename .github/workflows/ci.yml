@@ -58,6 +58,35 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: pytest
 
+  agent:
+    name: Agent lint + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      - run: pip install -r requirements.txt pytest ruff
+      - run: ruff check .
+      - run: pytest
+
+  helm:
+    name: Helm lint + render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint deploy/helm/finops-server deploy/helm/finops-agent --set agent.token=dummy
+      - run: |
+          helm template t deploy/helm/finops-server > /tmp/server.yaml
+          helm template t deploy/helm/finops-agent --set agent.token=dummy > /tmp/agent.yaml
+          grep -q "kind: Deployment" /tmp/server.yaml /tmp/agent.yaml
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
@@ -76,7 +105,7 @@ jobs:
 
   images:
     name: Container images
-    needs: [backend, backend-postgres, frontend]
+    needs: [backend, backend-postgres, agent, helm, frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,6 +117,8 @@ jobs:
             context: backend
           - name: kubefinops-ui
             context: frontend
+          - name: kubefinops-agent
+            context: agent
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

@@ -1,0 +1,145 @@
+{{- $name := printf "%s-agent" .Release.Name | trunc 50 | trimSuffix "-" -}}
+{{- $secret := .Values.agent.existingSecret | default $name -}}
+{{- if and (not .Values.agent.existingSecret) (not .Values.agent.token) }}
+{{- fail "Set agent.token (from POST /api/v1/clusters) or agent.existingSecret" }}
+{{- end }}
+{{- $labels := dict "app.kubernetes.io/name" "finops-agent" "app.kubernetes.io/instance" .Release.Name -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels: {{- toYaml $labels | nindent 4 }}
+{{- if not .Values.agent.existingSecret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secret }}
+  labels: {{- toYaml $labels | nindent 4 }}
+type: Opaque
+stringData:
+  token: {{ .Values.agent.token | quote }}
+{{- end }}
+{{- if .Values.rbac.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $name }}
+  labels: {{- toYaml $labels | nindent 4 }}
+rules:
+  # Read-only inventory: nodes and workload owners. No secrets, no configmaps.
+  - apiGroups: [""]
+    resources: [nodes, pods, namespaces, persistentvolumeclaims, persistentvolumes, services]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch]
+  {{- if .Values.rbac.allowRemediation }}
+  # Opt-in: lets approved actions scale workloads and patch resource requests.
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [patch]
+  - apiGroups: [apps]
+    resources: [deployments/scale, statefulsets/scale]
+    verbs: [get, patch, update]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $name }}
+  labels: {{- toYaml $labels | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{- toYaml $labels | nindent 4 }}
+spec:
+  replicas: 1          # stateless, but one pusher per cluster is enough
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: {{- toYaml $labels | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- toYaml $labels | nindent 8 }}
+    spec:
+      serviceAccountName: {{ $name }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: agent
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: FINOPS_AGENT_SERVER_URL, value: {{ .Values.agent.serverUrl | quote }} }
+            - { name: FINOPS_AGENT_PROMETHEUS_URL, value: {{ .Values.agent.prometheusUrl | quote }} }
+            - { name: FINOPS_AGENT_BACKFILL_HOURS, value: {{ .Values.agent.backfillHours | quote }} }
+            - { name: FINOPS_AGENT_EXCLUDED_NAMESPACES, value: {{ join "," .Values.agent.excludedNamespaces | quote }} }
+            - name: FINOPS_AGENT_TOKEN
+              valueFrom: { secretKeyRef: { name: {{ $secret }}, key: token } }
+          ports:
+            - { name: metrics, containerPort: 9101 }
+          livenessProbe:
+            httpGet: { path: /metrics, port: metrics }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+{{- if .Values.serviceMonitor.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{- toYaml $labels | nindent 4 }}
+spec:
+  ports:
+    - { name: metrics, port: 9101, targetPort: metrics }
+  selector: {{- toYaml $labels | nindent 4 }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $name }}
+  labels: {{- toYaml $labels | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}{{ toYaml . | nindent 4 }}{{- end }}
+spec:
+  selector:
+    matchLabels: {{- toYaml $labels | nindent 6 }}
+  endpoints:
+    - port: metrics
+{{- end }}

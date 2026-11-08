@@ -1,0 +1,8 @@
+apiVersion: v2
+name: finops-agent
+description: KubeFinOps in-cluster agent - pushes inventory and Prometheus usage to a KubeFinOps server
+type: application
+version: 0.2.0
+appVersion: "2.0.0"
+keywords: [finops, kubernetes, cost, agent]
+home: https://github.com/vedant-0789/Kubernetes-FinOps-Cost-Optimization-Dashboard

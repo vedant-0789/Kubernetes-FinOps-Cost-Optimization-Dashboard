@@ -1,0 +1,18 @@
+KubeFinOps server installed.
+
+UI:   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "finops.fullname" . }}-ui 8080:80
+API:  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "finops.fullname" . }}-api 8000:8000   (docs at /docs)
+
+Register a cluster and install its agent:
+
+  curl -X POST localhost:8000/api/v1/clusters -H 'Content-Type: application/json' \
+       {{- if .Values.secrets.adminApiKey }} -H 'X-Admin-Key: <your admin key>'{{ end }} \
+       -d '{"name": "my-cluster", "provider": "aws", "region": "us-east-1"}'
+
+  helm install finops-agent deploy/helm/finops-agent -n finops \
+       --set agent.serverUrl=http://{{ include "finops.fullname" . }}-api.{{ .Release.Namespace }}:8000 \
+       --set agent.token=<agent_token from the response>
+{{- if not .Values.secrets.adminApiKey }}
+
+WARNING: secrets.adminApiKey is empty - cluster registry endpoints are unauthenticated.
+{{- end }}
