@@ -305,6 +305,10 @@ MIN_AFTER_COVERAGE = 0.6   # share of the watch period's slots that must have ar
 NO_DATA_GIVE_UP = 3        # x watch period without data -> treat as a regression
 
 
+def _floor_slot(ts: datetime.datetime) -> datetime.datetime:
+    return ts.replace(minute=ts.minute - ts.minute % 5, second=0, microsecond=0)
+
+
 def verify_applied(db: Session, now: datetime.datetime | None = None) -> int:
     """Compare health before vs. after each applied change.
 
@@ -323,8 +327,12 @@ def verify_applied(db: Session, now: datetime.datetime | None = None) -> int:
                                                 RemediationAction.type != "ROLLBACK").all():
         if a.applied_at is None or a.applied_at + window > now:
             continue
-        before = _health(db, a, a.applied_at - window - SLOT, a.applied_at - SLOT + datetime.timedelta(seconds=1))
-        after = _health(db, a, a.applied_at, a.applied_at + window)
+        # Windows on slot boundaries, never on the apply timestamp itself:
+        # an offset like "applied - 5 min + 1 s" leaks the straddling slot
+        # into "before" whenever the apply lands in a slot's last second.
+        straddling = _floor_slot(a.applied_at)
+        before = _health(db, a, straddling - window, straddling)
+        after = _health(db, a, straddling + SLOT, straddling + SLOT + window)
         scaled_to_zero = a.type == "SCALE" and a.patch.get("spec", {}).get("replicas") == 0
         regressions = []
         if not scaled_to_zero and after["slots"] < needed_slots:

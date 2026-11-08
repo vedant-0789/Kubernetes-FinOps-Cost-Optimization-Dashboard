@@ -175,19 +175,27 @@ def test_verification_waits_for_data_instead_of_blessing_an_empty_window(client,
     assert r["status"] == "rolling_back" and "no usage data" in r["verification"]["regressions"][0]
 
 
-def test_slot_straddling_the_apply_counts_on_neither_side(client, cluster, team, db):
-    """Regression (found live on kind): the 5-minute slot in which the change
-    was applied (keyed by its start) was counted as *before*, so crash-loop
-    OOMs of the new pods made 'before' look worse than 'after'."""
+@pytest.mark.parametrize("offset_seconds", [0.2, 150, 299.5])
+def test_slot_straddling_the_apply_counts_on_neither_side(client, cluster, team, db, offset_seconds):
+    """Regression (found live on kind, then again on CI): the 5-minute slot in
+    which the change was applied (keyed by its start) must count on neither
+    side. A first fix still leaked it into "before" when the apply landed in a
+    slot's last second, so the dangerous offsets are pinned explicitly."""
     a = run_to_applied(client, cluster, team)
     applied = datetime.datetime.fromisoformat(a["applied_at"])
     slot_start = applied.replace(minute=applied.minute - applied.minute % 5, second=0, microsecond=0)
+    applied = slot_start + datetime.timedelta(seconds=offset_seconds)
+    row = db.get(RemediationAction, a["id"])
+    row.applied_at = applied
+    db.commit()
     push_samples(client, cluster, slot_start - datetime.timedelta(minutes=30), 30)        # healthy before
     push_samples(client, cluster, slot_start, 5, oom_every=1)                             # straddling slot
     push_samples(client, cluster, slot_start + datetime.timedelta(minutes=5), 30, oom_every=1)  # after
-    verify_applied(db, now=applied + datetime.timedelta(minutes=settings.remediation_verify_minutes + 1))
+    verify_applied(db, now=applied + datetime.timedelta(minutes=settings.remediation_verify_minutes + 6))
+    db.expire_all()
     r = client.get(f"{API}/clusters/{cluster['id']}/actions/{a['id']}", headers=team["vera"]).json()
     assert r["verification"]["before"]["oom_kills"] == 0
+    assert r["verification"]["after"]["oom_kills"] > 0
     assert r["status"] == "rolling_back"
 
 
