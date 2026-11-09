@@ -28,3 +28,14 @@ Thumbs.db
 .coverage
 coverage.xml
 htmlcov/
+
+# Research: downloaded traces and LaTeX build output
+research/data/
+research/paper/*.aux
+research/paper/*.bbl
+research/paper/*.blg
+research/paper/*.log
+research/paper/*.out
+research/paper/*.fdb_latexmk
+research/paper/*.fls
+research/paper/main.pdf
