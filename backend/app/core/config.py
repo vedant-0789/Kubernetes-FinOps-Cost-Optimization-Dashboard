@@ -75,6 +75,18 @@ class Settings(BaseSettings):
     rollback_on_oom: bool = True
     rollback_throttle_share: float = 0.25    # roll back if >25 % of the window is throttled after apply
 
+    # --- Forecasts, budgets & notifications (M5) -------------------------------------
+    finance_interval_seconds: int = 3600       # budget evaluation + anomaly detection
+    anomaly_threshold: float = 3.5             # robust z-score of the forecast error
+    anomaly_min_delta: float = 5.0             # $/day; ignore smaller swings
+    public_url: str = "http://localhost:8080"  # links in alerts
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "kubefinops@localhost"
+    smtp_starttls: bool = True
+
     # --- Security -----------------------------------------------------------------
     # Protects cluster-registry endpoints until user auth/RBAC lands (M4).
     # Unset = open (dev only; a warning is logged in prod).

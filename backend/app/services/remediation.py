@@ -276,9 +276,22 @@ def report_result(db: Session, cluster: Cluster, action_id: int, phase: str, ok:
         a.status, a.error = "failed", error
     audit.record(db, actor, f"remediation.{phase}_{'ok' if ok else 'failed'}", cluster_id=cluster.id,
                  target=_target(a), details={"id": a.id, "diff": diff, "error": error})
+    if phase == "dry_run" and ok:
+        _notify(db, a, f"Approval needed: {a.type.lower()} {_target(a)}",
+                f"{a.requested_by} proposed a change; the dry-run passed. It needs a second operator's approval.")
+    elif not ok:
+        _notify(db, a, f"Remediation {phase.replace('_', '-')} failed: {_target(a)}", error or "unknown error")
     db.commit()
     db.refresh(a)
     return a
+
+
+def _notify(db: Session, a: RemediationAction, subject: str, text: str) -> None:
+    from app.services import notify
+
+    notify.dispatch(db, "remediation", subject, text,
+                    {"Action": f"#{a.id} {a.type}", "Target": _target(a), "Requested by": a.requested_by,
+                     "Link": f"{settings.public_url}/clusters/{a.cluster_id}/actions/{a.id}"}, cluster_id=a.cluster_id)
 
 
 # --- verification & automatic rollback ----------------------------------------------------
@@ -361,6 +374,8 @@ def verify_applied(db: Session, now: datetime.datetime | None = None) -> int:
             db.flush()
             audit.record(db, SYSTEM, "remediation.auto_rollback", cluster_id=a.cluster_id, target=_target(a),
                          details={"id": a.id, "rollback_id": rb.id, "regressions": regressions})
+            _notify(db, a, f"Automatic rollback: {_target(a)}",
+                    "The change made the workload worse and is being rolled back: " + "; ".join(regressions))
         else:
             a.status, a.verified_at = "verified", now
             audit.record(db, "system:verifier", "remediation.verified", cluster_id=a.cluster_id, target=_target(a),

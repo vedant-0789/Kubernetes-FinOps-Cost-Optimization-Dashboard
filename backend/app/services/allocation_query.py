@@ -98,8 +98,10 @@ def idle_cost(db: Session, cluster_id: str, start, end) -> float:
 
 
 def allocation_report(db: Session, cluster: Cluster, window: str, aggregate: str, shared_mode: str,
-                      include_idle: bool, now: datetime.datetime | None = None) -> AllocationReport:
-    start, end = parse_window(window, now)
+                      include_idle: bool, now: datetime.datetime | None = None,
+                      period: tuple[datetime.datetime, datetime.datetime] | None = None) -> AllocationReport:
+    """``period`` (start, end) overrides ``window`` - used for calendar-month reports."""
+    start, end = period if period is not None else parse_window(window, now)
     cols = _group_columns(aggregate)
     C = CostAllocation
     q = db.query(*cols, C.shared, *[func.sum(getattr(C, f)).label(f) for f in SUM_FIELDS]).filter(
