@@ -37,7 +37,9 @@ open-source FinOps platform that allocates cost with the OpenCost model, detects
 through a dry-run, two-person approval and automatic-rollback workflow. In a trace-driven evaluation on 200
 containers spanning eight workload archetypes, the method saved 41.4\% of requested cost while keeping CPU
 under-provisioning at 0.47\% of windows (target $\varepsilon = 1\%$) with no OOM events, versus 55.1\% / 11.4\% for
-p95+20\% and 63.9\% / 18.8\% with 67 OOM events for a VPA-style estimator. \todo{Add Alibaba v2018 results.}
+p95+20\% and 63.9\% / 18.8\% with 67 OOM events for a VPA-style estimator. On 2,037 production containers
+from Alibaba cluster-trace-v2018 it saved 63.8\% at 0.39\% CPU under-provisioning, versus 77.5\% / 3.2\% and
+80.0\% / 7.9\%, and pushed memory below observed use in fewer containers (28 vs.\ 38 and 69).
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -135,7 +137,7 @@ under-provisioning is measured against the true demand. Cost uses OpenCost defau
 \textbf{Workloads.} 200 synthetic containers (25 per archetype, 21 days, fixed seed): diurnal web services,
 spiky APIs, nightly batch jobs, memory leaks, CPU-capped services, growing services, idle and under-provisioned
 containers. Original requests follow common practice (1.5--4$\times$ observed peaks; some below need).
-\todo{Real-trace validation on Alibaba cluster-trace-v2018~\cite{alibabatrace2018}.}
+For real-trace validation we use Alibaba cluster-trace-v2018~\cite{alibabatrace2018} (Section~\ref{sec:alibaba}).
 
 \textbf{Metrics.} Cost savings versus original requests; share of windows whose true CPU peak exceeds the request
 (\emph{CPU under}); CPU deficit (core-hours of demand above the request, relative to requested core-hours); OOM
@@ -182,14 +184,64 @@ non-stationary real workloads.
 \input{generated/table_archetypes_synthetic.tex}
 \end{table*}
 
-\textbf{Threats to validity.} Synthetic archetypes are our own design; real-trace validation is in progress
-\todo{}. The replay cannot model contention between containers on a node, and treats CPU exceedance as risk rather
+\subsection{Production traces (Alibaba v2018)}\label{sec:alibaba}
+\textbf{Data.} The container usage table is $\approx$29\,GB compressed; we stream its first 300\,MB (40,075
+containers, median span 8 days) and evaluate a deterministic 5\% hash sample of the containers with at least
+7.5 days of data and 60\% coverage (2,037 containers, median request 4 cores). Samples are sparse, so windows
+are 15 minutes (mean and peak). CPU utilisation is relative to the request: the observed peak never exceeds it
+(median peak/request 0.30, p95 0.81), consistent with limit $=$ request. Memory utilisation is relative to the
+container's memory size and includes page cache: 70\% of containers reach their size, and some exceed it
+without being killed. We therefore treat the original memory allocation as known-safe: a memory event is
+counted only when a strategy lowered the limit \emph{below} the original and the observed peak exceeds it.
+With an 8-day span we use a 3-day warm-up, so each container is evaluated for about 5 days.
+
+\begin{table}[t]
+\centering
+\caption{Alibaba v2018, 2,037 containers. ``OOM'' counts windows whose memory exceeded a limit lowered below
+the original.}
+\label{tab:alibaba}
+\resizebox{\columnwidth}{!}{\input{generated/table_main_alibaba.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{pareto_alibaba.pdf}
+\caption{Alibaba v2018: savings vs.\ CPU under-provisioning, including the $\varepsilon$ sweep.}
+\label{fig:pareto-alibaba}
+\end{figure}
+
+\textbf{Results} (Table~\ref{tab:alibaba}, Fig.~\ref{fig:pareto-alibaba}). Production containers are far more
+over-provisioned than our synthetic ones, so all strategies save more. The SLO-aware method saves 63.8\% at
+0.39\% CPU under-provisioning; p95+20\% saves 77.5\% but under-provisions 8$\times$ as often (3.2\%) and VPA-style
+80.0\% at 20$\times$ (7.9\%), with CPU deficits of 0.79\% and 1.61\% vs.\ 0.11\%. The calibration seen on
+synthetic data holds: for $\varepsilon \in \{0.5, 1, 2, 5\}\%$ the realised rate is 0.25, 0.39, 0.60 and 1.05\%,
+always below the target. Memory events touch 28 containers (1.4\%) under the method versus 38 and 69 for the
+baselines. We did not tune the method for this trace, and with only a 3-day warm-up the memory history is
+short; longer traces are needed to tell how much of this residual risk remains.
+
+\begin{table}[t]
+\centering
+\caption{Alibaba v2018: ablation and $\varepsilon$ sweep.}
+\label{tab:ablation-alibaba}
+\resizebox{\columnwidth}{!}{\input{generated/table_ablation_alibaba.tex}}
+\end{table}
+
+\textbf{Ablation on real traces} (Table~\ref{tab:ablation-alibaba}). Daily-peak headroom is again the main
+protection (0.39\% $\rightarrow$ 1.01\% without it), and the step cap now matters more: a one-shot reduction
+raises memory events from 28 to 36 containers. The censoring correction has no effect because no container is
+pinned at its CPU limit in this sample, and OOM feedback and recency weighting hardly matter over 5 evaluated
+days.
+
+\textbf{Threats to validity.} Synthetic archetypes are our own design. The Alibaba sample covers the head of
+the usage file (one week) and memory utilisation includes page cache, so memory results are indicative only.
+The replay cannot model contention between containers on a node, and treats CPU exceedance as risk rather
 than measured latency.
 
 \section{Conclusion}
 Making the reliability target the input of right-sizing turns a savings knob into an SLO: in our evaluation the
 method kept CPU under-provisioning below its target and avoided all OOM events while still removing 41\% of
-requested cost. KubeFinOps packages the method with cost allocation, waste detection and a guarded remediation
+requested cost, and on 2,037 Alibaba production containers it removed 64\% at 0.39\% under-provisioning, 8--20$\times$
+less than the p95 and VPA-style baselines. KubeFinOps packages the method with cost allocation, waste detection and a guarded remediation
 loop; code, traces and the replay simulator are open source.
 
 \bibliographystyle{IEEEtran}

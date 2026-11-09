@@ -10,7 +10,9 @@ Protocol (per container, per strategy)
   Requests start from the container's original (developer-set) requests, so
   per-step caps make the strategy converge gradually, as in production.
 * Memory limit = memory request (the usual "Guaranteed" memory setting): a
-  window whose memory peak exceeds the request is an OOM event. OOM events
+  window whose memory peak exceeds the request is an OOM event. For real
+  traces flagged ``original_mem_is_safe`` (usage observed under the original
+  limit without kills), only a limit lowered below the original can OOM. OOM events
   are fed back into the history the strategy sees from then on, exactly as
   the agent reports ``oom_kills`` in production.
 * CPU is burstable: a window whose true CPU peak exceeds the request is an
@@ -116,6 +118,10 @@ def replay(trace: Trace, name: str, fn: StrategyFn, warmup_days: int = 7, histor
     out = Outcome(name, trace.name, trace.archetype)
     spec = trace.original
     history: list[UsagePoint] = []
+    # Real traces: usage observed under the original allocation ran without
+    # OOM kills (Alibaba memory includes reclaimable page cache and may exceed
+    # mem_size), so only a limit *below* the original can cause one.
+    original_safe = bool(trace.meta.get("original_mem_is_safe"))
     i = 0
     for day in range(last_day + 1):
         # Points of this day.
@@ -135,7 +141,8 @@ def replay(trace: Trace, name: str, fn: StrategyFn, warmup_days: int = 7, histor
             h = p.duration_seconds / 3600
             true_cpu = trace.true_cpu_peak[k] if trace.true_cpu_peak else (p.cpu_peak or p.cpu_mean)
             mem_peak = p.mem_peak or p.mem_mean
-            oom = mem_peak > spec.mem_request
+            oom = mem_peak > spec.mem_request and (not original_safe
+                                                   or spec.mem_request < trace.original.mem_request - 1e-9)
             if day >= warmup_days:
                 out.windows += 1
                 out.cpu_core_hours += spec.cpu_request * h
@@ -146,7 +153,7 @@ def replay(trace: Trace, name: str, fn: StrategyFn, warmup_days: int = 7, histor
                     out.cpu_under_windows += 1
                     out.cpu_deficit_core_hours += (true_cpu - spec.cpu_request) * h
                 out.oom_events += int(oom)
-                out.orig_oom_events += int(mem_peak > trace.original.mem_request)
+                out.orig_oom_events += int(mem_peak > trace.original.mem_request and not original_safe)
             # The agent reports what happened under the requests in force:
             # for clipped traces, re-observe the true demand under the CPU
             # limit now in force (a raised limit stops the throttling).

@@ -1,0 +1,12 @@
+\begin{tabular}{lrrrrr}\toprule
+Strategy & Savings (\%) & CPU under (\%) & CPU deficit (\%) & OOM events & Containers w/ OOM \\\midrule
+SLO-aware (ours) & 63.8 & 0.39 & 0.11 & 582 & 28 \\
+-- censoring correction & 63.8 & 0.39 & 0.11 & 582 & 28 \\
+-- OOM feedback & 63.9 & 0.39 & 0.11 & 582 & 28 \\
+-- recency weighting & 63.8 & 0.40 & 0.12 & 583 & 28 \\
+-- daily-peak headroom & 66.8 & 1.01 & 0.22 & 545 & 27 \\
+-- step cap (one-shot) & 71.5 & 0.56 & 0.19 & 711 & 36 \\
+SLO-aware, $\varepsilon$=0.5\% & 61.2 & 0.25 & 0.08 & 557 & 29 \\
+SLO-aware, $\varepsilon$=2\% & 65.5 & 0.60 & 0.17 & 582 & 28 \\
+SLO-aware, $\varepsilon$=5\% & 67.2 & 1.05 & 0.28 & 545 & 27 \\
+\bottomrule\end{tabular}

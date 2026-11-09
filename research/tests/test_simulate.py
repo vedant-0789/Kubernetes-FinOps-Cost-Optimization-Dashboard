@@ -37,6 +37,19 @@ def test_oom_events_are_counted_and_fed_back():
     assert o.final_mem > 2 * GIB
 
 
+def test_original_allocation_is_safe_on_real_traces():
+    # Usage above mem_size under the original spec (page cache) is not an OOM;
+    # lowering the limit below the original and exceeding it still is.
+    t = flat_trace(days=12, mem=4.4 * GIB, req_mem=4 * GIB)
+    t.meta["original_mem_is_safe"] = True
+    assert replay(t, "static", static).oom_events == 0
+    down = flat_trace(days=12, mem=1 * GIB, req_mem=4 * GIB)
+    down.meta["original_mem_is_safe"] = True
+    down.points[-1] = UsagePoint(ts=down.points[-1].ts, cpu_mean=0.5, mem_mean=3 * GIB, cpu_peak=0.5,
+                                 mem_peak=3.9 * GIB)
+    assert replay(down, "slo_aware", strategy("slo_aware")).oom_events == 1
+
+
 def test_true_peak_is_used_for_under_provisioning():
     t = flat_trace(days=9)
     t.true_cpu_peak = [5.0] * len(t.points)                # demand far above anything observed

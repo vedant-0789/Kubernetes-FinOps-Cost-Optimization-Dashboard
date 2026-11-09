@@ -2,7 +2,7 @@
 LaTeX tables and figures for the paper.
 
     python -m kfo_research.experiments                 # synthetic population (default)
-    python -m kfo_research.experiments --alibaba data/container_usage_5min_300mb.csv.gz
+    python -m kfo_research.experiments --alibaba data/container_usage_15min_300mb.csv.gz
 """
 
 import argparse
@@ -39,7 +39,7 @@ ABLATIONS = {
 EPSILON_SWEEP = {f"slo_eps_{e}": ("slo_aware", Policy(cpu_slo_exceedance=e / 100), f"SLO-aware, $\\varepsilon$={e}\\%")
                  for e in (0.5, 2, 5)}
 ALL = {**STRATEGIES, **ABLATIONS, **EPSILON_SWEEP}
-LABEL_OFFSETS = {"slo_aware": (8, -3), "slo_eps_0.5": (8, -11), "slo_eps_2": (8, 2), "slo_eps_5": (8, 2)}
+LABEL_OFFSETS = {"slo_aware": (8, -3), "slo_eps_0.5": (8, -11), "slo_eps_2": (-30, 6), "slo_eps_5": (7, 0)}
 
 
 def _fn(name: str):
@@ -48,13 +48,15 @@ def _fn(name: str):
 
 
 def _run_one(args) -> list[Outcome]:
-    trace, names = args
-    return [replay(trace, n, _fn(n)) for n in names]
+    trace, names, warmup, history = args
+    return [replay(trace, n, _fn(n), warmup_days=warmup, history_days=history) for n in names]
 
 
-def run(traces: list[Trace], names: list[str], workers: int | None = None) -> dict[str, list[Outcome]]:
+def run(traces: list[Trace], names: list[str], workers: int | None = None, warmup_days: int = 7,
+        history_days: int = 14) -> dict[str, list[Outcome]]:
     with mp.Pool(workers or max(1, mp.cpu_count() - 2)) as pool:
-        per_trace = pool.map(_run_one, [(t, names) for t in traces], chunksize=1)
+        per_trace = pool.map(_run_one, [(t, names, warmup_days, history_days) for t in traces],
+                             chunksize=max(1, len(traces) // 200))
     by_strategy: dict[str, list[Outcome]] = {n: [] for n in names}
     for outs in per_trace:
         for o in outs:
@@ -134,8 +136,10 @@ def write_figures(res: dict, by_strategy: dict[str, list[Outcome]], tag: str) ->
         ax.scatter(s["cpu_under_rate"] * 100, s["savings_pct"], color=c, marker=marker, s=46, zorder=3,
                    alpha=1 if n in STRATEGIES else 0.6)
         offset = LABEL_OFFSETS.get(n, (5, 3))
-        ax.annotate(ALL[n][2].replace("\\%", "%").replace("$\\varepsilon$", "ε"),
-                    (s["cpu_under_rate"] * 100, s["savings_pct"]), textcoords="offset points", xytext=offset,
+        label = ALL[n][2].replace("\\%", "%").replace("$\\varepsilon$", "ε")
+        if n.startswith("slo_eps_"):
+            label = label.split(", ")[-1]          # "ε=2%": the marker colour already says SLO-aware
+        ax.annotate(label, (s["cpu_under_rate"] * 100, s["savings_pct"]), textcoords="offset points", xytext=offset,
                     fontsize=7)
     ax.set_xlabel("CPU under-provisioned windows (%)")
     ax.set_ylabel("Cost savings vs. original (%)")
@@ -193,23 +197,28 @@ def main() -> None:
     ap.add_argument("--alibaba", type=Path, help="5-minute container_usage subset (from alibaba.fetch_subset)")
     ap.add_argument("--meta", type=Path, default=ROOT / "data" / "container_meta.csv.gz")
     ap.add_argument("--max-containers", type=int, default=None)
+    ap.add_argument("--sample", type=float, default=0.05, help="hash-sampled fraction of Alibaba containers")
     ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--warmup-days", type=int, default=None, help="default 7 (synthetic) / 3 (Alibaba: 8-day trace)")
     args = ap.parse_args()
 
     started = time.time()
     if args.alibaba:
         from kfo_research.alibaba import load_traces, sanity_report
 
-        traces = load_traces(args.alibaba, args.meta, max_containers=args.max_containers)
+        traces = load_traces(args.alibaba, args.meta, max_containers=args.max_containers,
+                             sample=args.sample)
         print("sanity:", sanity_report(traces))
-        tag, names = "alibaba", [*STRATEGIES, *ABLATIONS]
+        tag, names = "alibaba", [*STRATEGIES, *ABLATIONS, *EPSILON_SWEEP]
+        warmup = args.warmup_days or 3
     else:
         from kfo_research.workloads import population
 
         traces = population(args.per_archetype, args.days, args.seed)
         tag, names = "synthetic", list(ALL)
+        warmup = args.warmup_days or 7
     print(f"{len(traces)} containers x {len(names)} strategies ({tag})")
-    by_strategy = run(traces, names, args.workers)
+    by_strategy = run(traces, names, args.workers, warmup_days=warmup)
     res = write_results(by_strategy, tag)
     write_tables(res, tag)
     write_figures(res, by_strategy, tag)

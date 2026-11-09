@@ -22,7 +22,8 @@ import gzip
 import io
 import tarfile
 import urllib.request
-from collections import defaultdict
+import zlib
+from zlib import error as zlib_error
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,8 +32,9 @@ from app.engines.rightsizing import ContainerSpec, UsagePoint
 
 BASE_URL = "http://aliopentrace.oss-cn-beijing.aliyuncs.com/v2018Traces"
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-SLOT = 300
+SLOT = 900          # Alibaba samples are sparse (~1 per 10 min): 15-minute windows
 CPU_RELATIVE_TO = "request"
+MEM_RELATIVE_TO = "request"   # mem_util_percent is % of the container's mem_size
 MEM_UNIT = 2**30   # one normalised memory unit is treated as 1 "GiB" for reporting only
 
 
@@ -63,8 +65,27 @@ def _open_member(name: str, budget: int | None):
     tar = tarfile.open(fileobj=stream, mode="r|gz")
     for member in tar:
         if member.isfile():
-            return tar, io.TextIOWrapper(tar.extractfile(member), encoding="utf-8", errors="replace")
+            return tar, _lines(tar.extractfile(member))
     raise RuntimeError(f"no file inside {name}.tar.gz")
+
+
+def _lines(binary, chunk: int = 1 << 20):
+    """Line iterator over a non-seekable stream (tar members in stream mode
+    cannot be wrapped by io.TextIOWrapper)."""
+    rest = b""
+    while True:
+        try:
+            data = binary.read(chunk)
+        except (EOFError, tarfile.ReadError, OSError, zlib_error):
+            data = b""
+        if not data:
+            if rest:
+                yield rest.decode("utf-8", "replace")
+            return
+        data = rest + data
+        *full, rest = data.split(b"\n")
+        for line in full:
+            yield line.decode("utf-8", "replace") + "\n"
 
 
 def fetch_meta(dest: Path = DATA_DIR) -> Path:
@@ -80,40 +101,52 @@ def fetch_meta(dest: Path = DATA_DIR) -> Path:
     return out
 
 
-def fetch_subset(budget_mb: int = 300, dest: Path = DATA_DIR) -> Path:
+def fetch_subset(budget_mb: int = 120, dest: Path = DATA_DIR) -> Path:
     """Stream the first ``budget_mb`` compressed MB of container_usage and keep
-    5-minute aggregates per container (a few MB on disk)."""
+    SLOT-second aggregates per container.
+
+    The file is sorted by container, so each container is aggregated and
+    flushed to disk as soon as the next one starts: memory stays flat no
+    matter how large the budget.
+    """
     dest.mkdir(parents=True, exist_ok=True)
-    out = dest / f"container_usage_5min_{budget_mb}mb.csv.gz"
+    out = dest / f"container_usage_{SLOT // 60}min_{budget_mb}mb.csv.gz"
     if out.exists():
         return out
     _, text = _open_member("container_usage", budget_mb * 2**20)
-    agg: dict[tuple[str, int], list[float]] = {}
-    try:
+    tmp = out.with_suffix(".part")
+    with gzip.open(tmp, "wt", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["container_id", "slot", "cpu_mean", "cpu_peak", "mem_mean", "mem_peak", "samples"])
+        current, agg = None, {}
+
+        def flush():
+            for slot, (cs, cmax, ms, mmax, k) in sorted(agg.items()):
+                w.writerow([current, slot, round(cs / k, 3), cmax, round(ms / k, 3), mmax, k])
+
         for row in csv.reader(text):
-            if len(row) < 5 or not row[2]:
-                continue
+            if len(row) < 5 or not row[0] or not row[2]:
+                continue   # some records carry no container id
             try:
                 cid, ts, cpu, mem = row[0], int(row[2]), float(row[3] or 0), float(row[4] or 0)
             except ValueError:
                 continue
+            if cid != current:
+                if current is not None:
+                    flush()
+                current, agg = cid, {}
             slot = ts // SLOT * SLOT
-            a = agg.get((cid, slot))
+            a = agg.get(slot)
             if a is None:
-                agg[(cid, slot)] = [cpu, cpu, mem, mem, 1]
+                agg[slot] = [cpu, cpu, mem, mem, 1]
             else:
                 a[0] += cpu
                 a[1] = max(a[1], cpu)
                 a[2] += mem
                 a[3] = max(a[3], mem)
                 a[4] += 1
-    except (EOFError, tarfile.ReadError, OSError):
-        pass   # budget reached mid-stream: everything read so far is valid
-    with gzip.open(out, "wt", encoding="utf-8", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["container_id", "slot", "cpu_mean", "cpu_peak", "mem_mean", "mem_peak", "samples"])
-        for (cid, slot), (cs, cmax, ms, mmax, k) in sorted(agg.items()):
-            w.writerow([cid, slot, round(cs / k, 3), cmax, round(ms / k, 3), mmax, k])
+        # The last container is usually cut off by the byte budget: drop it.
+    tmp.replace(out)
     return out
 
 
@@ -135,35 +168,56 @@ def load_meta(path: Path) -> dict[str, Meta]:
     return out
 
 
-def load_traces(usage_path: Path, meta_path: Path, min_days: float = 8.0, max_containers: int | None = None
+def load_traces(usage_path: Path, meta_path: Path, min_days: float = 7.5, max_containers: int | None = None,
+                min_coverage: float = 0.6, sample: float = 1.0
                 ) -> list[Trace]:
-    """Containers with at least ``min_days`` of contiguous-enough 5-minute data."""
+    """Containers with at least ``min_days`` of contiguous-enough data.
+
+    The subset file holds each container as one contiguous block, so it is
+    read one container at a time (flat memory, early stop at
+    ``max_containers``). ``sample`` keeps a deterministic, hash-based fraction
+    of containers so a sample is spread over the whole file, not its head.
+    """
     meta = load_meta(meta_path)
-    rows: dict[str, list[list[float]]] = defaultdict(list)
-    with gzip.open(usage_path, "rt", encoding="utf-8") as f:
-        r = csv.reader(f)
-        next(r)
-        for cid, slot, cm, cp, mm, mp, _ in r:
-            rows[cid].append([int(slot), float(cm), float(cp), float(mm), float(mp)])
-    traces = []
-    for cid, series in sorted(rows.items()):
+    traces: list[Trace] = []
+    for cid, series in _container_blocks(usage_path, sample):
         m = meta.get(cid)
         if m is None or m.cpu_request <= 0 or m.mem_size <= 0:
             continue
         series.sort()
         span_days = (series[-1][0] - series[0][0]) / 86400
-        if span_days < min_days or len(series) < 0.8 * span_days * 288:
+        if span_days < min_days or len(series) < min_coverage * span_days * 86400 / SLOT:
             continue
         scale = m.cpu_request / 100 if CPU_RELATIVE_TO == "request" else 1 / 100
-        # Memory: mem_util_percent and mem_size are both % of machine memory,
-        # so keep both in the same (normalised) unit.
-        pts = [UsagePoint(ts=float(s), cpu_mean=cm * scale, cpu_peak=cp * scale, mem_mean=mm * MEM_UNIT / 100,
-                          mem_peak=mp * MEM_UNIT / 100, duration_seconds=SLOT) for s, cm, cp, mm, mp in series]
-        original = ContainerSpec(m.cpu_request, m.mem_size * MEM_UNIT / 100, m.cpu_limit, m.mem_size * MEM_UNIT / 100)
-        traces.append(Trace(cid, "alibaba", pts, original, meta={"span_days": span_days}))
+        # mem_size is in normalised units; mem_util_percent is relative to it.
+        mem_scale = m.mem_size * MEM_UNIT / 100 if MEM_RELATIVE_TO == "request" else MEM_UNIT / 100
+        pts = [UsagePoint(ts=float(s), cpu_mean=cm * scale, cpu_peak=cp * scale, mem_mean=mm * mem_scale,
+                          mem_peak=mp * mem_scale, duration_seconds=SLOT) for s, cm, cp, mm, mp in series]
+        original = ContainerSpec(m.cpu_request, m.mem_size * MEM_UNIT, m.cpu_limit, m.mem_size * MEM_UNIT)
+        traces.append(Trace(cid, "alibaba", pts, original, meta={"span_days": span_days, "original_mem_is_safe": True}))
         if max_containers and len(traces) >= max_containers:
             break
     return traces
+
+
+def _container_blocks(usage_path: Path, sample: float = 1.0):
+    """Yield (container_id, [[slot, cpu_mean, cpu_peak, mem_mean, mem_peak], ...])."""
+    keep_below = int(sample * 2**32)
+    current, series, keep = None, [], False
+    with gzip.open(usage_path, "rt", encoding="utf-8") as f:
+        r = csv.reader(f)
+        next(r)
+        for row in r:
+            cid = row[0]
+            if cid != current:
+                if keep and series:
+                    yield current, series
+                current, series = cid, []
+                keep = sample >= 1.0 or zlib.crc32(cid.encode()) < keep_below
+            if keep:
+                series.append([int(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5])])
+    if keep and series:
+        yield current, series
 
 
 def sanity_report(traces: list[Trace]) -> dict:
@@ -176,4 +230,7 @@ def sanity_report(traces: list[Trace]) -> dict:
             "cpu_peak_over_request_median": st.median(util) if util else None,
             "cpu_peak_over_request_p95": sorted(util)[int(0.95 * len(util))] if util else None,
             "mem_peak_over_request_median": st.median(mem) if mem else None,
-            "share_cpu_peak_above_request": sum(u > 1 for u in util) / len(util) if util else None}
+            "share_cpu_peak_above_request": sum(u > 1 for u in util) / len(util) if util else None,
+            "share_mem_peak_at_limit": sum(m >= 0.99 for m in mem) / len(mem) if mem else None,
+            "mem_mean_over_request_median": st.median(
+                st.fmean(p.mem_mean for p in t.points) / t.original.mem_request for t in traces) if traces else None}
