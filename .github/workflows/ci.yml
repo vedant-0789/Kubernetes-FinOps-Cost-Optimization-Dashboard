@@ -88,7 +88,7 @@ jobs:
           grep -q "kind: Deployment" /tmp/server.yaml /tmp/agent.yaml
 
   frontend:
-    name: Frontend build
+    name: Frontend tests + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -101,6 +101,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm test
       - run: npm run build
 
   images:
