@@ -1,0 +1,1102 @@
+{
+  "overall": {
+    "static": {
+      "strategy": "static",
+      "containers": 200,
+      "savings_pct": 0.0,
+      "cpu_under_rate": 0.09398065476190476,
+      "cpu_deficit_share": 0.00768792072615184,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 50
+    },
+    "p95_buffer": {
+      "strategy": "p95_buffer",
+      "containers": 200,
+      "savings_pct": 55.05687404697266,
+      "cpu_under_rate": 0.11388392857142857,
+      "cpu_deficit_share": 0.011432518460294054,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 135
+    },
+    "vpa": {
+      "strategy": "vpa",
+      "containers": 200,
+      "savings_pct": 63.92526323220618,
+      "cpu_under_rate": 0.18772321428571428,
+      "cpu_deficit_share": 0.04625332056660786,
+      "oom_events": 67,
+      "containers_with_oom": 2,
+      "containers_cpu_under_gt_5pct": 166
+    },
+    "slo_aware": {
+      "strategy": "slo_aware",
+      "containers": 200,
+      "savings_pct": 41.44874868641523,
+      "cpu_under_rate": 0.004673859126984127,
+      "cpu_deficit_share": 0.0003041740175747526,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_no_censoring": {
+      "strategy": "slo_no_censoring",
+      "containers": 200,
+      "savings_pct": 41.74937805475763,
+      "cpu_under_rate": 0.006148313492063492,
+      "cpu_deficit_share": 0.0004952301407239413,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_no_oom_feedback": {
+      "strategy": "slo_no_oom_feedback",
+      "containers": 200,
+      "savings_pct": 41.44874868641523,
+      "cpu_under_rate": 0.004673859126984127,
+      "cpu_deficit_share": 0.0003041740175747526,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_no_decay": {
+      "strategy": "slo_no_decay",
+      "containers": 200,
+      "savings_pct": 41.949576558963365,
+      "cpu_under_rate": 0.005256696428571428,
+      "cpu_deficit_share": 0.00039901758390036197,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_no_peak_cv": {
+      "strategy": "slo_no_peak_cv",
+      "containers": 200,
+      "savings_pct": 46.004821949136584,
+      "cpu_under_rate": 0.013740079365079365,
+      "cpu_deficit_share": 0.0011778421134860588,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 2
+    },
+    "slo_no_step_cap": {
+      "strategy": "slo_no_step_cap",
+      "containers": 200,
+      "savings_pct": 42.5633587070395,
+      "cpu_under_rate": 0.005353422619047619,
+      "cpu_deficit_share": 0.00035257284565440056,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_eps_0.5": {
+      "strategy": "slo_eps_0.5",
+      "containers": 200,
+      "savings_pct": 39.34848029050014,
+      "cpu_under_rate": 0.0029699900793650792,
+      "cpu_deficit_share": 0.00018736816927046623,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_eps_2": {
+      "strategy": "slo_eps_2",
+      "containers": 200,
+      "savings_pct": 43.95235369105216,
+      "cpu_under_rate": 0.008329613095238095,
+      "cpu_deficit_share": 0.0006452503962696598,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 0
+    },
+    "slo_eps_5": {
+      "strategy": "slo_eps_5",
+      "containers": 200,
+      "savings_pct": 48.3033021905281,
+      "cpu_under_rate": 0.021511656746031747,
+      "cpu_deficit_share": 0.0026827306492339066,
+      "oom_events": 0,
+      "containers_with_oom": 0,
+      "containers_cpu_under_gt_5pct": 3
+    }
+  },
+  "by_archetype": {
+    "batch_nightly": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.0024702380952380952,
+        "cpu_deficit_share": 3.7992153168498336e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 25.131017756724095,
+        "cpu_under_rate": 0.00040674603174603173,
+        "cpu_deficit_share": 6.428812802263155e-06,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 62.032995499024615,
+        "cpu_under_rate": 0.06936507936507937,
+        "cpu_deficit_share": 0.11275680924578615,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 16
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": 24.490573619333055,
+        "cpu_under_rate": 0.0064285714285714285,
+        "cpu_deficit_share": 0.0001513986447605283,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": 24.490573619333055,
+        "cpu_under_rate": 0.0064285714285714285,
+        "cpu_deficit_share": 0.0001513986447605283,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": 24.490573619333055,
+        "cpu_under_rate": 0.0064285714285714285,
+        "cpu_deficit_share": 0.0001513986447605283,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": 24.176783268808688,
+        "cpu_under_rate": 0.005496031746031746,
+        "cpu_deficit_share": 0.0001294010771758951,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": 26.0053712915685,
+        "cpu_under_rate": 0.012202380952380952,
+        "cpu_deficit_share": 0.0003335046069214904,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": 24.490573619333055,
+        "cpu_under_rate": 0.0064285714285714285,
+        "cpu_deficit_share": 0.0001513986447605283,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": 23.275519215898242,
+        "cpu_under_rate": 0.002450396825396825,
+        "cpu_deficit_share": 5.12114703106356e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": 25.89188125745262,
+        "cpu_under_rate": 0.01199404761904762,
+        "cpu_deficit_share": 0.00032045549301104614,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": 28.417462039969664,
+        "cpu_under_rate": 0.03601190476190476,
+        "cpu_deficit_share": 0.001247167007900292,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 3
+      }
+    },
+    "cpu_capped": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.422281746031746,
+        "cpu_deficit_share": 0.14940878072005637,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 13.40443440742225,
+        "cpu_under_rate": 0.07298611111111111,
+        "cpu_deficit_share": 0.008319297645393142,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 23
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 16.82486673411767,
+        "cpu_under_rate": 0.12473214285714286,
+        "cpu_deficit_share": 0.01735989636477124,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": -17.29407028422367,
+        "cpu_under_rate": 0.013194444444444444,
+        "cpu_deficit_share": 0.0011019723425748694,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": -12.435601321270905,
+        "cpu_under_rate": 0.024990079365079364,
+        "cpu_deficit_share": 0.002814928057749205,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": -17.29407028422367,
+        "cpu_under_rate": 0.013194444444444444,
+        "cpu_deficit_share": 0.0011019723425748694,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": -16.960825004795876,
+        "cpu_under_rate": 0.013234126984126984,
+        "cpu_deficit_share": 0.0011092060848974913,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": -9.932636151214446,
+        "cpu_under_rate": 0.017251984126984126,
+        "cpu_deficit_share": 0.0014316935822449737,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": -16.750661591706837,
+        "cpu_under_rate": 0.013194444444444444,
+        "cpu_deficit_share": 0.0011019723425748694,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": -18.901855316993288,
+        "cpu_under_rate": 0.013134920634920635,
+        "cpu_deficit_share": 0.0010807467480950426,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": -15.945196028250596,
+        "cpu_under_rate": 0.013353174603174603,
+        "cpu_deficit_share": 0.0011257971652505457,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": -12.426337025421574,
+        "cpu_under_rate": 0.014573412698412698,
+        "cpu_deficit_share": 0.0012347365182981888,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    },
+    "growing": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.0,
+        "cpu_deficit_share": 0.0,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 72.05812208747926,
+        "cpu_under_rate": 0.18854166666666666,
+        "cpu_deficit_share": 0.03133838460492798,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 71.76364736128346,
+        "cpu_under_rate": 0.19040674603174604,
+        "cpu_deficit_share": 0.03214857436862472,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": 57.77145234533537,
+        "cpu_under_rate": 0.00433531746031746,
+        "cpu_deficit_share": 0.00023182601725286594,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": 57.77145234533537,
+        "cpu_under_rate": 0.00433531746031746,
+        "cpu_deficit_share": 0.00023182601725286594,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": 57.77145234533537,
+        "cpu_under_rate": 0.00433531746031746,
+        "cpu_deficit_share": 0.00023182601725286594,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": 60.527588250586575,
+        "cpu_under_rate": 0.011517857142857142,
+        "cpu_deficit_share": 0.0007972970652733666,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": 63.587719184190505,
+        "cpu_under_rate": 0.03229166666666667,
+        "cpu_deficit_share": 0.0027658429652797846,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 2
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": 59.291791860853024,
+        "cpu_under_rate": 0.006994047619047619,
+        "cpu_deficit_share": 0.00038666633473665807,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": 55.85389333044108,
+        "cpu_under_rate": 0.001984126984126984,
+        "cpu_deficit_share": 9.793814994612123e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": 59.75035084955884,
+        "cpu_under_rate": 0.009097222222222222,
+        "cpu_deficit_share": 0.0006050735628369562,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": 62.611360744536526,
+        "cpu_under_rate": 0.02494047619047619,
+        "cpu_deficit_share": 0.0019925236000618175,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    },
+    "idle": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.0,
+        "cpu_deficit_share": 0.0,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 96.9130641265959,
+        "cpu_under_rate": 0.17118055555555556,
+        "cpu_deficit_share": 0.028096281729138035,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 18
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 95.3238438466323,
+        "cpu_under_rate": 0.001101190476190476,
+        "cpu_deficit_share": 5.8631482408410434e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": 90.67729073556848,
+        "cpu_under_rate": 0.0015277777777777779,
+        "cpu_deficit_share": 1.8471039360423015e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": 90.67729073556848,
+        "cpu_under_rate": 0.0015277777777777779,
+        "cpu_deficit_share": 1.8471039360423015e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": 90.67729073556848,
+        "cpu_under_rate": 0.0015277777777777779,
+        "cpu_deficit_share": 1.8471039360423015e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": 90.68125850627743,
+        "cpu_under_rate": 0.0016170634920634921,
+        "cpu_deficit_share": 2.0135089344703646e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": 90.7176963694301,
+        "cpu_under_rate": 0.0037996031746031747,
+        "cpu_deficit_share": 5.505657246436771e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": 96.61746766079683,
+        "cpu_under_rate": 0.003263888888888889,
+        "cpu_deficit_share": 0.0001937125446033356,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": 90.65016216405152,
+        "cpu_under_rate": 0.000873015873015873,
+        "cpu_deficit_share": 8.930021239282257e-06,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": 90.70889939911466,
+        "cpu_under_rate": 0.0030456349206349205,
+        "cpu_deficit_share": 4.298060773039536e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": 90.76592453286378,
+        "cpu_under_rate": 0.009781746031746032,
+        "cpu_deficit_share": 0.00016033762609718666,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    },
+    "memory_leak": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.0,
+        "cpu_deficit_share": 0.0,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 56.429403727535465,
+        "cpu_under_rate": 0.22843253968253968,
+        "cpu_deficit_share": 0.012275478428224138,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 56.9588232820107,
+        "cpu_under_rate": 0.5082638888888888,
+        "cpu_deficit_share": 0.04097602266794854,
+        "oom_events": 67,
+        "containers_with_oom": 2,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": 44.54152770323143,
+        "cpu_under_rate": 0.003958333333333334,
+        "cpu_deficit_share": 9.114464583417206e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": 44.54152770323143,
+        "cpu_under_rate": 0.003958333333333334,
+        "cpu_deficit_share": 9.114464583417206e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": 44.54152770323143,
+        "cpu_under_rate": 0.003958333333333334,
+        "cpu_deficit_share": 9.114464583417206e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": 44.54353268309834,
+        "cpu_under_rate": 0.003740079365079365,
+        "cpu_deficit_share": 8.857239594629556e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": 45.49967627633836,
+        "cpu_under_rate": 0.009910714285714285,
+        "cpu_deficit_share": 0.00026590782606540273,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": 45.051749825129704,
+        "cpu_under_rate": 0.004027777777777778,
+        "cpu_deficit_share": 9.738600814163872e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": 43.829635662558594,
+        "cpu_under_rate": 0.0021329365079365077,
+        "cpu_deficit_share": 4.1881310297669186e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": 45.29578081790241,
+        "cpu_under_rate": 0.00830357142857143,
+        "cpu_deficit_share": 0.00021168126169761044,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": 46.4095986029274,
+        "cpu_under_rate": 0.022956349206349206,
+        "cpu_deficit_share": 0.0006904176035410971,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    },
+    "spiky_api": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.00017857142857142857,
+        "cpu_deficit_share": 5.334735486708454e-06,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 76.03203021512262,
+        "cpu_under_rate": 0.14998015873015874,
+        "cpu_deficit_share": 0.0482569762047446,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 24
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 81.55351795182791,
+        "cpu_under_rate": 0.32955357142857145,
+        "cpu_deficit_share": 0.11559766905734808,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": 45.93705932206827,
+        "cpu_under_rate": 0.0047321428571428575,
+        "cpu_deficit_share": 0.0005552516425460275,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": 45.93705932206827,
+        "cpu_under_rate": 0.0047321428571428575,
+        "cpu_deficit_share": 0.0005552516425460275,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": 45.93705932206827,
+        "cpu_under_rate": 0.0047321428571428575,
+        "cpu_deficit_share": 0.0005552516425460275,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": 45.790672592628134,
+        "cpu_under_rate": 0.0041964285714285714,
+        "cpu_deficit_share": 0.0004874404560710799,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": 50.78383549188781,
+        "cpu_under_rate": 0.009692460317460317,
+        "cpu_deficit_share": 0.0013435247630064365,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": 46.61709452265389,
+        "cpu_under_rate": 0.0049801587301587305,
+        "cpu_deficit_share": 0.0005971617317070508,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": 40.57453123689022,
+        "cpu_under_rate": 0.001875,
+        "cpu_deficit_share": 0.00015615564457928301,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": 53.34396875977898,
+        "cpu_under_rate": 0.012212301587301588,
+        "cpu_deficit_share": 0.002230362502143551,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": 69.1424503062373,
+        "cpu_under_rate": 0.034126984126984124,
+        "cpu_deficit_share": 0.021113737545278708,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    },
+    "under_provisioned": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.32691468253968253,
+        "cpu_deficit_share": 0.07466495981025613,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": -27.008549808576298,
+        "cpu_under_rate": 0.048095238095238094,
+        "cpu_deficit_share": 0.004624115661774705,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 8
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": -15.190453574056683,
+        "cpu_under_rate": 0.1380952380952381,
+        "cpu_deficit_share": 0.01930559330250322,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": -56.69710749433718,
+        "cpu_under_rate": 0.0017261904761904762,
+        "cpu_deficit_share": 7.910501537002561e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": -56.69710749433718,
+        "cpu_under_rate": 0.0017261904761904762,
+        "cpu_deficit_share": 7.910501537002561e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": -56.69710749433718,
+        "cpu_under_rate": 0.0017261904761904762,
+        "cpu_deficit_share": 7.910501537002561e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": -60.36221337465655,
+        "cpu_under_rate": 0.0009623015873015873,
+        "cpu_deficit_share": 4.057785262068502e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": -38.75651186197007,
+        "cpu_under_rate": 0.015009920634920635,
+        "cpu_deficit_share": 0.001052886467036533,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": -56.69710749433718,
+        "cpu_under_rate": 0.0017261904761904762,
+        "cpu_deficit_share": 7.910501537002561e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": -63.45370517360527,
+        "cpu_under_rate": 0.0006051587301587302,
+        "cpu_deficit_share": 2.4419346758557887e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": -48.930711547382735,
+        "cpu_under_rate": 0.004662698412698413,
+        "cpu_deficit_share": 0.000263863641735291,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": -37.494793030549054,
+        "cpu_under_rate": 0.017986111111111112,
+        "cpu_deficit_share": 0.0013560108936192927,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    },
+    "web_diurnal": {
+      "static": {
+        "strategy": "static",
+        "containers": 25,
+        "savings_pct": 0.0,
+        "cpu_under_rate": 0.0,
+        "cpu_deficit_share": 0.0,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "p95_buffer": {
+        "strategy": "p95_buffer",
+        "containers": 25,
+        "savings_pct": 69.8999336668106,
+        "cpu_under_rate": 0.0514484126984127,
+        "cpu_deficit_share": 0.005638581267022572,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 12
+      },
+      "vpa": {
+        "strategy": "vpa",
+        "containers": 25,
+        "savings_pct": 72.73959536366303,
+        "cpu_under_rate": 0.14026785714285714,
+        "cpu_deficit_share": 0.021375058016477343,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 25
+      },
+      "slo_aware": {
+        "strategy": "slo_aware",
+        "containers": 25,
+        "savings_pct": 60.64014429003488,
+        "cpu_under_rate": 0.001488095238095238,
+        "cpu_deficit_share": 7.53648529823892e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_censoring": {
+        "strategy": "slo_no_censoring",
+        "containers": 25,
+        "savings_pct": 60.64014429003488,
+        "cpu_under_rate": 0.001488095238095238,
+        "cpu_deficit_share": 7.53648529823892e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_oom_feedback": {
+        "strategy": "slo_no_oom_feedback",
+        "containers": 25,
+        "savings_pct": 60.64014429003488,
+        "cpu_under_rate": 0.001488095238095238,
+        "cpu_deficit_share": 7.53648529823892e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_decay": {
+        "strategy": "slo_no_decay",
+        "containers": 25,
+        "savings_pct": 60.44692441560784,
+        "cpu_under_rate": 0.0012896825396825397,
+        "cpu_deficit_share": 7.190185693584557e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_peak_cv": {
+        "strategy": "slo_no_peak_cv",
+        "containers": 25,
+        "savings_pct": 64.53544101957466,
+        "cpu_under_rate": 0.009761904761904762,
+        "cpu_deficit_share": 0.0006119710400004811,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_no_step_cap": {
+        "strategy": "slo_no_step_cap",
+        "containers": 25,
+        "savings_pct": 62.142646124082226,
+        "cpu_under_rate": 0.0022123015873015874,
+        "cpu_deficit_share": 0.0001313647325456627,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_0.5": {
+        "strategy": "slo_eps_0.5",
+        "containers": 25,
+        "savings_pct": 59.2239103477838,
+        "cpu_under_rate": 0.0007043650793650794,
+        "cpu_deficit_share": 3.2188097888762184e-05,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_2": {
+        "strategy": "slo_eps_2",
+        "containers": 25,
+        "savings_pct": 62.49190331637917,
+        "cpu_under_rate": 0.003968253968253968,
+        "cpu_deficit_share": 0.00022749789520137378,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      },
+      "slo_eps_5": {
+        "strategy": "slo_eps_5",
+        "containers": 25,
+        "savings_pct": 64.97470139377467,
+        "cpu_under_rate": 0.011716269841269842,
+        "cpu_deficit_share": 0.0008110342656842357,
+        "oom_events": 0,
+        "containers_with_oom": 0,
+        "containers_cpu_under_gt_5pct": 0
+      }
+    }
+  }
+}

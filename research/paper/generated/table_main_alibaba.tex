@@ -1,0 +1,7 @@
+\begin{tabular}{lrrrrr}\toprule
+Strategy & Savings (\%) & CPU under (\%) & CPU deficit (\%) & OOM events & Containers w/ OOM \\\midrule
+Original requests & 0.0 & 0.00 & 0.00 & 0 & 0 \\
+p95 + 20\% & 77.5 & 3.20 & 0.79 & 1222 & 38 \\
+VPA-style & 80.0 & 7.92 & 1.61 & 2498 & 69 \\
+SLO-aware (ours) & 63.8 & 0.39 & 0.11 & 582 & 28 \\
+\bottomrule\end{tabular}

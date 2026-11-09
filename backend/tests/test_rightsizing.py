@@ -108,6 +108,19 @@ def test_throttled_container_is_treated_as_censored_and_upsized():
     assert vpa(pts, spec).cpu_request <= spec.cpu_limit * 1.15 + 1e-9
 
 
+def test_censoring_correction_does_not_compound():
+    """Regression (found by the trace replay): the lift was anchored on the
+    *current* limit, so once the limit had been raised, old throttled samples
+    still in the window lifted it again on every run - exponential growth."""
+    pts = series(cpu=lambda h, r: 0.25, mem=lambda h, r: 10 * MIB, peak_factor=1.0, throttled_seconds=290.0)
+    first = slo_aware(pts, ContainerSpec(cpu_request=0.1, mem_request=64 * MIB, cpu_limit=0.25, mem_limit=128 * MIB))
+    # Same old data, but the request/limit were already raised by the first run.
+    again = slo_aware(pts, ContainerSpec(cpu_request=first.cpu_request, mem_request=64 * MIB,
+                                         cpu_limit=first.cpu_limit, mem_limit=128 * MIB))
+    assert again.cpu_request <= first.cpu_request * 1.01
+    assert first.cpu_request <= 0.25 * 2 + 1e-9           # bounded by the observed clip level
+
+
 def test_oom_kills_raise_memory_above_the_limit():
     spec = ContainerSpec(cpu_request=0.1, mem_request=128 * MIB, mem_limit=192 * MIB)
 

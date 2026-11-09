@@ -80,6 +80,7 @@ class Policy:
     leak_growth_threshold: float = 0.15  # relative growth per day that counts as a leak
     leak_horizon_hours: float = 24.0
     max_reduction: float = 0.5         # never cut more than 50 % in one step
+    max_upsize: float = 2.0            # censoring-driven raises are at most 2x the current request per step
     change_threshold: float = 0.10     # ignore changes smaller than 10 %
     min_cpu: float = 0.01
     min_mem: float = 32 * MIB
@@ -263,9 +264,14 @@ def slo_aware(points: Sequence[UsagePoint], spec: ContainerSpec, policy: Policy 
     censored = bool(spec.cpu_limit and throttled_share > policy.throttle_threshold)
     cpu = q_peak * (1 + headroom)
     if censored:
-        # Peaks are clipped at the limit: true demand is at least the limit,
-        # and the more time spent throttled, the further above it.
-        cpu = max(cpu, spec.cpu_limit * (1 + throttled_share))
+        # Peaks are clipped where the data was recorded: true demand is at
+        # least that clipping level, and the more time spent throttled, the
+        # further above it. Anchor on the *observed* plateau (max peak), not on
+        # the current limit: if old throttled samples are still in the window
+        # after a raise, anchoring on the new limit would compound every run.
+        clip_level = max(cpu_peaks)
+        cpu = max(cpu, min(clip_level * (1 + throttled_share),
+                           max(spec.cpu_request, clip_level) * policy.max_upsize))
         reasons.append(f"CPU throttled {throttled_share:.0%} of the time at its limit: demand is under-observed")
     if spec.hpa_target_cpu_utilization:
         p95_mean = weighted_quantile(cpu_means, w, 0.95)
@@ -350,15 +356,21 @@ def vpa(points: Sequence[UsagePoint], spec: ContainerSpec, policy: Policy = DEFA
         return _insufficient("vpa", spec, span_h)
     w = decay_weights(points, 24.0)
     cpu = weighted_quantile([p.cpu_mean for p in points], w, 0.90) * 1.15
-    # VPA's memory histogram is fed per-interval peaks; OOMs are recorded as
-    # samples of max(1.2 x usage, usage + 100 MiB) at the kill.
-    mem_samples = [p.mem_peak or p.mem_mean for p in points]
-    mem_w = list(w)
-    for p, weight in zip(points, w, strict=True):
+    # VPA's memory histogram takes ONE sample per aggregation interval (24 h):
+    # the peak working set in that interval. OOM kills add a sample of
+    # max(1.2 x usage, usage + 100 MiB) at the kill.
+    now = max(p.ts for p in points)
+    daily: dict[int, float] = {}
+    for p in points:
+        d = int((now - p.ts) // 86400)
+        daily[d] = max(daily.get(d, 0.0), p.mem_peak or p.mem_mean)
+    mem_samples = list(daily.values())
+    mem_w = [0.5 ** (d * 24 / 24.0) for d in daily]   # 24 h half-life, one weight per interval
+    for p in points:
         if p.oom_kills:
             base = spec.mem_limit or (p.mem_peak or p.mem_mean)
             mem_samples.append(max(base * 1.2, base + 100 * MIB))
-            mem_w.append(weight)
+            mem_w.append(0.5 ** ((now - p.ts) / 86400))
     mem = weighted_quantile(mem_samples, mem_w, 0.90) * 1.15
     conf, label = _confidence(span_h, completeness, policy)
     return _finish("vpa", spec, max(cpu, 0.025), max(mem, 250 * MIB), spec.cpu_limit and cpu * 2,
