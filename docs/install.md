@@ -4,7 +4,7 @@ There are four ways to run KubeFinOps, from quickest to most production-like:
 
 | Option | What you get | Needs |
 | :--- | :--- | :--- |
-| [1. Local dev](#1-local-development) | API + UI with a synthetic demo cluster, SQLite | Python 3.11+, Node 20+ |
+| [1. Local dev](#1-local-development) | API + UI with a synthetic demo cluster, SQLite | Python 3.11+, Node 22+ |
 | [2. docker compose](#2-docker-compose) | Full server stack (TimescaleDB, API, worker, UI), demo cluster | Docker |
 | [3. kind cluster](#3-local-kubernetes-kind) | Everything on a 4-node Kubernetes cluster: Prometheus, Helm charts, a real agent and real demo workloads | Docker, kind, kubectl, helm |
 | [4. Production](#4-production-eks--gke--aks--on-prem) | Helm install on EKS / GKE / AKS / on-prem, one agent per cluster | A cluster, managed PostgreSQL with TimescaleDB (or the bundled one) |
