@@ -85,7 +85,9 @@ kubectl -n finops port-forward svc/finops-server-api 8000:8000       # http://lo
 ```
 
 * Sign in with the local-only account in `deploy/kind/server-values.yaml`.
-* Real data appears after about 15 minutes, and right-sizing needs a few hours of history to become confident.
+* Nodes, workloads and usage appear within minutes. Costs are allocated per complete hour, so the first
+  costs appear after the next full hour. Right-sizing needs at least a day of history (full confidence after
+  7 days); the demo script's live parts work on the synthetic cluster meanwhile.
   The synthetic `demo-aws-prod` cluster is kept alongside for a full picture straight away.
 * Tear down with `kind delete cluster --name kubefinops`.
 

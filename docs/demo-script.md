@@ -4,7 +4,7 @@ A walkthrough for a presentation or viva. It uses the local kind environment (`d
 that a real agent, real Prometheus data and real Kubernetes changes are on screen. Everything except
 part 6 also works on the quick local setup (`start.ps1`) with the synthetic `demo-aws-prod` cluster.
 
-**Before you start** (at least 2–3 hours earlier, so right-sizing has history):
+**Before you start** (the day before: right-sizing on the kind cluster needs at least 24 hours of history, and costs are allocated per complete hour. Parts 3–5 can use the synthetic `demo-aws-prod` cluster, which already has 14 days):
 
 ```powershell
 .\deploy\scripts\up.ps1

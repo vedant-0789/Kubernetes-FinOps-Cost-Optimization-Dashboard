@@ -1,5 +1,5 @@
 # End-to-end: the one-command kind environment (deploy/scripts/up.sh) on Linux,
-# then checks that the in-cluster agent reports and that its cluster gets costs.
+# then checks that the in-cluster agent reports the real nodes, workloads and prices.
 name: E2E (kind)
 
 on:
@@ -45,14 +45,16 @@ jobs:
           done
           [ -n "$cluster" ] || { echo "agent never reported"; exit 1; }
           id=$(echo "$cluster" | jq -r .id)
-          # Allocation runs every 2 minutes on kind; wait for the first costs.
+          # Inventory from the real cluster: the 4 kind nodes (one labelled spot) and the
+          # demo workloads. Costs are allocated per *complete* hour, so a fresh cluster
+          # has none for up to an hour; the allocation itself is covered by unit tests.
           for i in $(seq 1 30); do
             summary=$(curl -fsS -H "$H" "localhost:8000/api/v1/clusters/$id/summary" || true)
-            echo "$summary" | jq -e '.nodes > 0 and .cost_last_24h > 0' >/dev/null 2>&1 && break
+            echo "$summary" | jq -e '.nodes == 4 and .spot_nodes == 1 and .workloads >= 6' >/dev/null 2>&1 && break
             sleep 10
           done
           echo "$summary" | jq .
-          echo "$summary" | jq -e '.nodes > 0 and .cost_last_24h > 0' >/dev/null
+          echo "$summary" | jq -e '.nodes == 4 and .spot_nodes == 1 and .workloads >= 6 and .monthly_run_rate > 0' >/dev/null
 
       - name: Diagnostics
         if: failure()
