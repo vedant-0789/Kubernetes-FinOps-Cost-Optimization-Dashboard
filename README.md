@@ -1,318 +1,147 @@
-# Kubernetes FinOps & Cost-Optimization Dashboard
+# KubeFinOps
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18.2+-61dafb.svg)](https://react.dev)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4+-38bdf8.svg)](https://tailwindcss.com)
-[![OpenCost](https://img.shields.io/badge/FinOps-OpenCost%20Model-10b981.svg)](https://www.opencost.io)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-API%20Client-326ce5.svg)](https://kubernetes.io)
+**Open-source Kubernetes cost platform: see who spends what, find waste, and safely right-size workloads
+across many clusters.**
 
-A full-stack, production-grade **Kubernetes FinOps & Cost-Optimization Dashboard** built to monitor cluster resource usage, estimate cloud costs per namespace and pod using OpenCost allocation models, automatically detect idle/"zombie" workloads, generate p95 right-sizing recommendations, and execute automated waste remediation.
+[![CI](https://github.com/vedant-0789/Kubernetes-FinOps-Cost-Optimization-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/vedant-0789/Kubernetes-FinOps-Cost-Optimization-Dashboard/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Helm%20charts-326ce5)
+![TimescaleDB](https://img.shields.io/badge/PostgreSQL-TimescaleDB-fdb515)
+![React](https://img.shields.io/badge/UI-React%2018-61dafb)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-Designed as a Cloud Computing course project demonstrating a closed-loop FinOps workflow: converting raw Kubernetes cAdvisor / Prometheus metrics into real financial visibility and automated waste elimination.
+![Overview](docs/images/overview.png)
 
----
+Teams reserve far more CPU and memory than they use, and the bill is paid per node. KubeFinOps shows it:
+* **Cost allocation**: who spends what, including idle and shared cost.
+* **Waste detection**: idle workloads, orphaned volumes, unused load balancers, removable nodes.
+* **Right-sizing** with a risk target, not a fixed buffer.
+* **Safe changes**: server-side dry-run, two-person approval and automatic rollback.
 
-## 🏗️ System Architecture
+The right-sizing method was evaluated on **2,037 production containers from Alibaba's cluster trace**. It
+removed **64 %** of requested cost and was short of CPU **8–20× less often** than p95 and VPA-style baselines
+([research](research/README.md)).
+
+## Features
+
+| | |
+| :--- | :--- |
+| **Multi-cluster** | A lightweight agent per cluster (read-only RBAC by default) pushes inventory and Prometheus usage to one server. |
+| **Cost allocation** | OpenCost-compatible: node prices for AWS, GCP and Azure (regions, spot), on-prem prices by label; containers pay `max(request, usage)`; idle and shared cost; by namespace, workload, node, pod or any label. |
+| **Showback / chargeback** | Monthly CSV and PDF reports that reconcile to the bill. |
+| **SLO-aware right-sizing** | Picks the smallest request whose peak demand is exceeded in at most ε of the time. It accounts for CPU throttling, OOM kills, memory leaks and HPAs. Every recommendation shows evidence, confidence and risk. |
+| **Waste detection** | Idle workloads, orphaned volumes, LoadBalancers without endpoints, consolidatable nodes. Savings never double count. |
+| **Safe remediation** | Dry-run in the cluster, two-person approval, change windows, verification and automatic rollback on OOM kills, restarts or throttling. GitOps patch export. |
+| **Forecasts and alerts** | Holt-Winters month-end forecast, cost anomaly detection, budgets per team, Slack, webhook and email notifications. |
+| **Production-ready** | JWT users with viewer, operator and admin roles; hash-chained audit log; Helm charts with HPA, PDB and ServiceMonitor; non-root read-only containers; Prometheus metrics; JSON logs. |
+
+<table>
+<tr><td><img src="docs/images/costs.png" alt="Cost allocation by team"></td>
+<td><img src="docs/images/recommendation-detail.png" alt="Right-sizing recommendation with evidence"></td></tr>
+<tr><td align="center">Cost allocation by team label, shared costs spread</td>
+<td align="center">Right-sizing: hourly peaks vs current and recommended requests</td></tr>
+<tr><td><img src="docs/images/waste.png" alt="Waste findings"></td>
+<td><img src="docs/images/forecast.png" alt="Forecast and anomalies"></td></tr>
+<tr><td align="center">Waste: idle workloads, orphaned volumes, unused load balancers</td>
+<td align="center">Forecast with 80 % band; a cost incident flagged as an anomaly</td></tr>
+</table>
+
+## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph K8sTelemetry [Data & Metric Ingestion]
-        MockStream[Synthetic K8s Cluster Metrics Stream]
-        RealK8s[Live Kubernetes API + Prometheus]
-    end
-
-    subgraph BackendCore [FastAPI Python Backend - Port 8000]
-        Scheduler[APScheduler Continuous Telemetry Collector]
-        CostEngine[OpenCost Allocation Formula Engine]
-        ZombieDetector[Zombie Workload Detector Engine]
-        RightSizer[Right-Sizing Engine - p95 + 20% Safety Buffer]
-        RemediationEngine[Remediation Handler - Scale to 0 / Patch Requests]
-        SQLite[(SQLite Database - finops.db)]
-    end
-
-    subgraph APIEndpoints [REST API Layer]
-        API_Overview[GET /api/overview & /api/cost-trend]
-        API_NS[GET /api/namespaces & pods]
-        API_Zombies[GET /api/zombies & POST remediate]
-        API_Recs[GET /api/recommendations & POST apply]
-        API_History[GET /api/actions/history]
-        API_Lifecycle[GET /api/lifecycle]
-        API_Settings[GET/POST /api/settings]
-    end
-
-    subgraph FrontendUI [React + Tailwind SaaS Dashboard - Port 5173]
-        OverviewPage[Cluster Overview & Financial Highlights]
-        NamespacePage[Namespace Cost Attribution]
-        ZombiePage[Zombie Workload Cleanup Engine]
-        RightSizingPage[p95 Pod Right-Sizing]
-        AuditPage[Remediation Action Audit Log]
-        LifecyclePage[FinOps 7-Stage Stepper View]
-        SettingsPage[Pricing & Policy Config]
-    end
-
-    MockStream -->|Mock Mode| Scheduler
-    RealK8s -->|Real Mode| Scheduler
-    Scheduler --> CostEngine
-    CostEngine --> SQLite
-    CostEngine --> ZombieDetector
-    CostEngine --> RightSizer
-    ZombieDetector --> SQLite
-    RightSizer --> SQLite
-
-    SQLite <--> API_Overview & API_NS & API_Zombies & API_Recs & API_History & API_Lifecycle & API_Settings
-    API_Zombies --> RemediationEngine
-    API_Recs --> RemediationEngine
-    RemediationEngine --> RealK8s
-    RemediationEngine --> SQLite
-
-    APIEndpoints <--> FrontendUI
+flowchart LR
+  subgraph cluster["each Kubernetes cluster"]
+    P["Prometheus<br/>cAdvisor + kube-state-metrics"] --> A["finops-agent"]
+    K["Kubernetes API"] <--> A
+  end
+  A -- "inventory + 5-min usage (HTTPS, cluster token)" --> API
+  API -- "approved changes" --> A
+  subgraph server["finops-server"]
+    API["API (FastAPI)"] <--> DB[("PostgreSQL + TimescaleDB")]
+    W["worker: allocation, analysis,<br/>forecasts, verification"] <--> DB
+    UI["React UI"] --> API
+  end
 ```
 
----
+Details: [docs/architecture.md](docs/architecture.md). It covers the cost model, the right-sizing algorithm, the
+remediation state machine, security and scaling.
 
-## 🎯 Key Features
+## Quick start
 
-1. **Dual Execution Mode (Mock vs Live K8s Cluster)**:
-   - **Mock Mode (Default)**: Out-of-the-box synthetic telemetry stream with 8 namespaces (`frontend-prod`, `backend-api`, `payments-service`, `ml-training-job`, `logging-stack`, `monitoring`, `analytics-worker`, `staging-zombies`), 22+ pods, and 30 days of pre-seeded trend data.
-   - **Real Mode**: Connects directly to a live Kubernetes cluster using `kubectl` / `kubernetes` Python SDK and Prometheus queries.
-
-2. **OpenCost Financial Cost Modeling**:
-   - Calculates resource cost allocation using configurable hourly unit rates:
-     $$\text{Hourly Cost} = \max(\text{CPU Req}, \text{CPU Usage}) \times \text{CPU Rate} + \max(\text{RAM Req GB}, \text{RAM Usage GB}) \times \text{RAM Rate}$$
-     $$\text{Monthly Run Rate} = \text{Hourly Cost} \times 730\text{ hours}$$
-
-3. **Zombie Workload Detection**:
-   - Continuous background rule engine flagging workloads with sustained $\le 5\%$ CPU utilization and zero/low network IO for over 24 hours.
-   - Dedicated Zombie Workloads page with one-click "Scale Deployment to 0 Replicas" remediation.
-
-4. **Right-Sizing Recommendation Engine**:
-   - Computes optimal CPU and RAM requests based on historical **p95 peak utilization + 20% safety margin**.
-   - Calculates exact monthly financial savings ($/mo) per workload.
-   - "Apply Recommendation" patches container resource requests via the K8s API or updates mock telemetry.
-
-5. **Automated Remediation & Audit Log**:
-   - Safety guardrail: Manual confirmation required by default (with toggle for Auto-Apply low-risk recommendations in Settings).
-   - Permanent audit log tracking executed actions, timestamps, before/after metrics, and realized monthly savings.
-
-6. **FinOps 7-Stage Lifecycle View**:
-   - Visual stepper illustrating the 7 operational stages: **Observe → Measure → Attribute → Detect → Recommend → Optimize → Verify**.
-
----
-
-## 🚧 v2 platform (in progress)
-
-The project is being rebuilt into a deployable, multi-cluster FinOps platform
-(TimescaleDB, in-cluster agent, Helm charts, SLO-aware right-sizing). Already in place:
-
-- **API v1** under `/api/v1/*`, health probes `/healthz` & `/readyz`, Prometheus metrics at `/metrics`, request-ID tracing.
-- **Database migrations** with Alembic (`backend/migrations`); PostgreSQL/TimescaleDB in production, SQLite for local dev.
-- **Separate worker** process (`python -m app.worker`) so API replicas scale horizontally.
-- **Containers**: `backend/Dockerfile` (non-root, healthcheck), `frontend/Dockerfile` (unprivileged nginx).
-- **Tests & CI**: `pytest` suite run on SQLite and TimescaleDB, `ruff` lint, image builds to GHCR.
-
-```bash
-# Full stack in Docker (UI on :8080, API docs on :8000/docs)
-docker compose -f deploy/docker-compose.yml up --build
-
-# Backend tests
-cd backend && pip install -r requirements-dev.txt && ruff check . && pytest
-```
-
-All settings are environment variables prefixed with `FINOPS_` (see `backend/app/core/config.py`).
-
-### Multi-cluster ingestion & cost allocation (M1)
-
-Each cluster is registered once and gets an agent token (only its SHA-256 hash is stored):
-
-```bash
-curl -X POST localhost:8000/api/v1/clusters -H 'Content-Type: application/json' \
-     -d '{"name": "prod-eu", "provider": "aws", "region": "eu-central-1"}'   # -> agent_token, shown once
-```
-
-| Method | Endpoint | Purpose |
-| :--- | :--- | :--- |
-| `POST` | `/api/v1/ingest/inventory` | Agent: nodes (instance type, spot/on-demand, creation time) and workload owners with labels |
-| `POST` | `/api/v1/ingest/samples` | Agent: 5-minute container usage samples + node heartbeats (idempotent) |
-| `GET` | `/api/v1/clusters/{id}/summary` | Run rate, idle %, efficiency, spot share |
-| `GET` | `/api/v1/clusters/{id}/allocation?window=7d&aggregate=label:team&shared=distribute` | Showback/chargeback by `namespace`, `workload`, `node`, `pod` or any label |
-| `GET` | `/api/v1/clusters/{id}/cost-timeseries?window=30d&step=1d` | Daily/hourly cost by top namespaces, plus idle |
-
-**How cost is allocated** (OpenCost-compatible): each node's hourly price comes from the agent, per-cluster
-custom rates, or the AWS/GCP/Azure catalogs in `backend/app/pricing/catalogs` (region multipliers, spot discount),
-and is split into per-core and per-GiB prices. Containers pay for `max(request, usage)`; capacity nobody
-reserved is reported as **idle cost**; `kube-system`/`monitoring` are **shared cost**, shown separately or
-spread over teams. Node heartbeats make autoscaled and spot nodes cost only while they run. Container cost +
-idle cost always reconciles to the node bill (tested).
-
-### In-cluster agent, Helm charts & local Kubernetes (M2)
-
-- **`agent/`** – a stateless Python agent (one Deployment per cluster, read-only RBAC). Every 5 minutes it reads
-  inventory from the Kubernetes API (node instance type / zone / spot labels from EKS, Karpenter, GKE, AKS;
-  workload owners and labels) and usage from Prometheus (cAdvisor + kube-state-metrics: CPU mean/peak, working
-  set, throttling, network, restarts, OOM kills, Pod→ReplicaSet→Deployment and Job→CronJob ownership), then
-  pushes both to the server with retries. On restart it re-sends a back-fill window; the server de-duplicates.
-- **`deploy/helm/finops-server`** – API (+ HPA, PDB, migration init container serialised by a PostgreSQL
-  advisory lock), single worker, UI, optional bundled TimescaleDB, Ingress, ServiceMonitor; non-root,
-  read-only root filesystem, dropped capabilities.
-- **`deploy/helm/finops-agent`** – agent with a read-only ClusterRole (no Secrets/ConfigMaps); write verbs only
-  with `rbac.allowRemediation=true`.
-- Node labels the agent understands beyond the cloud defaults: `finops.io/hourly-price` (explicit price, e.g.
-  on-prem) and `finops.io/capacity-cpu` / `finops.io/capacity-memory` (simulated clusters such as kind, whose
-  nodes all report the host's full capacity).
-
-One command builds everything and runs it on a local 4-node kind cluster (AWS-like node labels incl. a spot
-node), with kube-prometheus-stack and real demo workloads (over-provisioned API, idle deployment, CPU-throttled
-batch on spot, a memory leak that gets OOM-killed, an orphaned PVC, a LoadBalancer with no endpoints):
+**Local (2 minutes, synthetic demo cluster):**
 
 ```powershell
-.\deploy\scripts\up.ps1          # Windows   (Linux/macOS: deploy/scripts/up.sh)
-kubectl -n finops port-forward svc/finops-server-api 8000:8000   # http://localhost:8000/docs
+.\start.ps1                     # Windows; on Linux/macOS see docs/install.md
 ```
 
-The same charts install on EKS/GKE/AKS: point `secrets.databaseUrl` at a managed PostgreSQL with TimescaleDB,
-set `secrets.adminApiKey`, enable `ingress`, and install `finops-agent` in each cluster with its own token.
+Open http://localhost:5173 and sign in as `admin@kubefinops.localhost`. The password is generated on first run
+into `backend/.env`.
 
-### SLO-aware right-sizing & waste detection (M3)
+**Full stack in Docker:**
 
-`backend/app/engines/rightsizing.py` implements three strategies on the same 5-minute history (all replicas of a
-workload pooled):
-
-| Strategy | CPU request | Memory request |
-| :--- | :--- | :--- |
-| **`slo_aware`** (default) | (1-ε) recency-weighted quantile of *peak* CPU (ε = 1 %), + headroom from day-to-day variability of the daily peak; **censoring correction** when throttled at the limit; HPA-aware floor | peak working set + volatility headroom; each OOM kill treated as demand ≥ limit; leak detection blocks reductions |
-| `vpa` | VPA-style p90 + 15 % (24 h decay) | p90 of peaks + 15 %, OOM bump ×1.2 |
-| `p95_buffer` | p95 of mean usage + 20 % | p95 of mean usage + 20 % |
-
-Every recommendation carries evidence, a confidence (history × completeness), a risk label, and is capped at
-−50 % per step. `GET .../recommendations/{id}/compare` runs all three side by side and reports how often each
-would have been exceeded by real peaks.
-
-`backend/app/engines/waste.py` detects **idle workloads**, **orphaned volumes** (priced per storage class),
-**LoadBalancers without endpoints**, and **consolidatable nodes** (best-fit simulation that never double-books
-free capacity). An idle workload gets an idle finding *instead of* a right-sizing recommendation, so
-`GET .../savings` never counts the same dollar twice (node consolidation is reported separately because it
-overlaps with right-sizing). Dismissed items stay dismissed; fixed items resolve automatically.
-
-### Safe remediation, users & audit (M4)
-
-Changes never go straight to a cluster. Each action (from a right-sizing recommendation, an idle-workload
-finding, or manual) moves through a guarded workflow:
-
-```
-propose ─▶ dry-run in the cluster ─▶ approval by a *second* operator ─▶ apply (inside the change window)
-                (dryRun=All, diff)          (two-person rule)              │
-                                                                            ▼
-                         auto-rollback ◀── OOM kills / throttling got worse ── watch period ──▶ verified
+```bash
+docker compose -f deploy/docker-compose.yml up --build      # UI :8080, API docs :8000/docs
 ```
 
-- **Agent executor** (opt-in: `rbac.allowRemediation=true`): server-side dry-run so admission policies and quotas
-  are exercised, captures the current spec before applying, strategic-merge patches only the resources it
-  changes. Rollbacks restore the captured spec and explicitly remove limits the change added.
-- **Guardrails**: protected namespaces, Deployments/StatefulSets only, one open action per workload,
-  per-cluster hourly rate limit, change window (`FINOPS_CHANGE_WINDOW_UTC`; rollbacks bypass it).
-- **GitOps**: every action exports as a kustomize strategic-merge patch (`GET .../actions/{id}/patch.yaml`).
-- **Users & roles**: viewer / operator / admin, PBKDF2-hashed passwords, short-lived JWTs; roles are re-read on
-  every request so demotions apply immediately. A bootstrap admin is created from config.
-- **Tamper-evident audit log**: every login, registry change, dismissal and remediation step is hash-chained
-  (SHA-256 of the previous event); `GET /api/v1/audit/verify` pinpoints any edited or deleted event.
+**On a real Kubernetes cluster (local kind, with Prometheus, a real agent and demo workloads):**
 
-### Forecasts, anomalies, budgets & reports (M5)
+```powershell
+.\deploy\scripts\up.ps1         # or deploy/scripts/up.sh
+```
 
-- **Forecast** (`GET .../forecast?scope=cluster|namespace:<ns>|label:<k>=<v>`): additive Holt-Winters with a
-  damped trend and weekly seasonality (grid-searched on one-step error), 80/95 % prediction intervals, a
-  month-end projection (actual so far + rest of today + remaining days) and a 7-day backtest MAPE.
-- **Cost anomalies**: robust z-score of one-step-ahead forecast errors, so cheaper weekends are not flagged; runs
-  for the cluster and its top namespaces, so an incident is traced to where the money went.
-- **Budgets** per cluster, namespace or label (e.g. `team=payments`): thresholds fire once per month, plus a
-  "forecast to exceed" alert while there is still time to act.
-- **Notifications** to Slack, webhooks or email for budgets, anomalies and remediation (approval needed, failures,
-  automatic rollbacks); every delivery is logged, webhook URLs are masked in the API.
-- **Showback / chargeback** for any calendar month as JSON, CSV or a one-page PDF; rows + shared + idle reconcile
-  to the bill.
+**Production (EKS / GKE / AKS / on-prem):** install `deploy/helm/finops-server` once and
+`deploy/helm/finops-agent` in each cluster. See [docs/install.md](docs/install.md).
 
-### Web UI (M6)
+## Research
 
-React 18 + React Router + TanStack Query + Recharts, signed in with the platform's users and roles:
+`research/` contains the paper and the tooling behind it:
+* a trace-replay simulator that runs the **same right-sizing code** the product uses;
+* synthetic workload archetypes;
+* a streaming loader for Alibaba cluster-trace-v2018;
+* an IEEE-format paper draft whose tables and figures are generated from the experiments.
 
-| Page | What it shows / does |
+| Alibaba v2018, 2,037 containers | Savings | CPU under-provisioned windows | Containers with memory events |
+| :--- | ---: | ---: | ---: |
+| p95 + 20 % | 77.5 % | 3.20 % | 38 |
+| VPA-style | 80.0 % | 7.92 % | 69 |
+| **SLO-aware (ε = 1 %)** | **63.8 %** | **0.39 %** | **28** |
+
+The realised under-provisioning stays below the chosen ε (0.5–5 %) on both synthetic and real traces.
+
+## Documentation
+
+| Document | For |
 | :--- | :--- |
-| Overview | run rate, idle %, efficiency, nodes/spot, 30-day stacked cost, non-overlapping savings, top right-sizing, anomalies, budgets |
-| Cost allocation | any window, grouping (namespace, workload, node, pod, any label), shared costs spread or separate; CSV/PDF showback export |
-| Forecast & anomalies | history, forecast and 80 % band, month-end projection, model and backtest error; anomalies with acknowledge |
-| Right-sizing | recommendations; detail with hourly CPU/memory peaks vs current and recommended requests, OOM markers, evidence and a side-by-side comparison of SLO-aware, VPA-style and p95+20 % |
-| Waste | idle workloads (scale to 0), orphaned volumes, unused load balancers, removable nodes |
-| Changes & approvals | approval queue with dry-run diffs, two-person rule enforced in the UI, progress timeline, verification before/after, GitOps patch download |
-| Budgets, Clusters, Users, Notifications, Audit log | create budgets; register clusters (token shown once with the Helm command); manage roles; Slack/webhook/email channels with test send; hash-chain verification |
+| [Installation & operations](docs/install.md) | Local dev, docker compose, kind, production Helm install, configuration, troubleshooting |
+| [Architecture](docs/architecture.md) | Components, data flow, algorithms, security, scaling |
+| [Demo script](docs/demo-script.md) | A 12-minute walkthrough and likely questions |
+| [Project summary](docs/project-summary.md) | Key numbers, CV bullets, how to present it as a team |
+| [Research](research/README.md) | Reproducing the experiments and building the paper |
+| API reference | Interactive OpenAPI docs at `/docs` on any running server |
+
+## Repository layout
+
+```
+backend/    FastAPI API + worker, engines (allocation, rightsizing, waste, forecast), migrations, tests
+agent/      in-cluster agent: inventory, PromQL usage, remediation executor
+frontend/   React UI
+deploy/     docker-compose, Helm charts, kind environment, scripts
+research/   simulator, Alibaba loader, experiments, paper
+docs/       documentation and screenshots
+```
+
+## Development
 
 ```bash
-cd frontend && npm ci && npm test && npm run dev    # http://localhost:5173 (proxies /api to :8000)
+cd backend  && pip install -r requirements-dev.txt && ruff check . && pytest      # 170 tests
+cd agent    && pip install -r requirements.txt pytest ruff && pytest              # 46 tests
+cd frontend && npm ci && npm test                                                  # 15 tests
+cd research && pip install -r requirements.txt pytest && pytest                    # 18 tests
 ```
 
-The built-in demo cluster `demo-aws-prod` (6 nodes incl. spot and a weekday-peak autoscaled node, 12 workloads, a cost
-incident five days ago caused by a runaway load test,
-14 days of 5-minute history) is generated through the same ingestion code an agent uses.
+CI runs all of these on every pull request: backend on SQLite and TimescaleDB, Helm lint and render, and image
+builds. Images are pushed to GHCR from `main` and from version tags.
 
-## ⚡ Quick Start Guide
+## License
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- npm or yarn
-
-### Option 1: One-Click Startup (Windows)
-Double-click `start.bat` or run in PowerShell:
-```powershell
-.\start.ps1
-```
-
-### Option 2: Manual Terminal Startup
-
-#### 1. Launch FastAPI Backend
-```bash
-cd backend
-python -m pip install -r requirements.txt
-python run_backend.py
-```
-- **Backend API**: `http://127.0.0.1:8000`
-- **Swagger Documentation**: `http://127.0.0.1:8000/docs`
-
-#### 2. Launch React Frontend
-Open a new terminal:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-- **Frontend Dashboard**: `http://localhost:5173`
-
----
-
-## 🔌 API Endpoints Reference
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/overview` | Cluster summary statistics & key metrics |
-| `GET` | `/api/cost-trend?range=7d|30d` | Time-series cost data points |
-| `GET` | `/api/namespaces` | List of namespaces with cost attribution & efficiency scores |
-| `GET` | `/api/namespaces/{name}/pods` | Detailed pod metrics for a specific namespace |
-| `GET` | `/api/zombies` | List of flagged idle/zombie workloads |
-| `POST` | `/api/zombies/{id}/remediate` | Remediate zombie workload (scale deployment to 0 replicas) |
-| `GET` | `/api/recommendations` | Active p95 right-sizing recommendations |
-| `POST` | `/api/recommendations/{id}/apply` | Apply right-sizing patch to container requests |
-| `GET` | `/api/actions/history` | Remediation audit trail & realized savings log |
-| `GET` | `/api/lifecycle` | 7-stage FinOps lifecycle summary mapping |
-| `GET/POST` | `/api/settings` | Read or update hourly cloud pricing & threshold policies |
-
----
-
-## 🌐 Connecting to a Real Cluster
-
-To switch from Mock Mode to a Live Kubernetes Cluster:
-1. Ensure your local `~/.kube/config` file is configured for your cluster (e.g. Minikube, EKS, GKE, or Kind).
-2. On the **Settings** page in the dashboard UI (or via `.env`), uncheck **Simulated Mock Data Mode**.
-3. The backend will automatically initialize the official `kubernetes` Python client to query live pods and patch deployment specifications.
-
----
-
-## 📜 License
-Developed as an academic Cloud Computing FinOps course project. Open-source under the MIT License.
+MIT. Started as a Cloud Computing course project and developed into a deployable platform.

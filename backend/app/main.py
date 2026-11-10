@@ -62,8 +62,10 @@ async def lifespan(app: FastAPI):
             ensure_demo_cluster(db, settings.demo_backfill_days)
             run_allocation(db)
             from app.services.analysis import run_analysis
+            from app.services.finance import run_finance
 
             run_analysis(db)
+            run_finance(db)   # anomalies & budgets right away, not after the first hourly run
         finally:
             db.close()
 
