@@ -108,6 +108,7 @@ def run_all_once() -> None:
         _instrumented("demo", _demo_tick)()
     _instrumented("allocate", _allocate)()
     _instrumented("analyze", _analyze)()
+    _instrumented("finance", _finance)()
 
 
 def start_scheduler(interval_seconds: int = 30):

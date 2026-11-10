@@ -125,7 +125,15 @@ and flags cost anomalies with a robust z-score~\cite{rousseeuw1993mad} of foreca
 Changes are never applied blindly: a proposed change is first \emph{dry-run} on the cluster's API server,
 approved by a second operator, applied inside a change window, and watched; if OOM kills, restarts or throttling
 rise compared with the period before the change, an automatic rollback restores the captured specification. All
-steps are written to a hash-chained audit log. \todo{Architecture figure.}
+steps are written to a hash-chained audit log (Fig.~\ref{fig:arch}).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{architecture.pdf}
+\caption{KubeFinOps architecture. Agents push data out of each cluster, so the server needs no access to
+cluster API servers; the right-sizing engine evaluated in this paper is the one the worker runs.}
+\label{fig:arch}
+\end{figure*}
 
 \section{Evaluation}\label{sec:eval}
 \textbf{Replay simulator.} For each container and strategy, after a 7-day warm-up the strategy is re-run daily on
