@@ -140,7 +140,9 @@ cd research && pip install -r requirements.txt pytest && pytest                 
 ```
 
 CI runs all of these on every pull request: backend on SQLite and TimescaleDB, Helm lint and render, and image
-builds. Images are pushed to GHCR from `main` and from version tags.
+builds. An end-to-end job runs `deploy/scripts/up.sh` on a kind cluster and checks that the agent reports the
+cluster's nodes, workloads and prices. Images are pushed to GHCR from `main` and from version tags, and Dependabot keeps
+dependencies current. See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 ## License
 

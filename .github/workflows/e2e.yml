@@ -1,0 +1,65 @@
+# End-to-end: the one-command kind environment (deploy/scripts/up.sh) on Linux,
+# then checks that the in-cluster agent reports the real nodes, workloads and prices.
+name: E2E (kind)
+
+on:
+  push:
+    branches: [main]
+    paths: ["agent/**", "backend/**", "deploy/**", "frontend/**", ".github/workflows/e2e.yml"]
+  pull_request:
+    paths: ["agent/**", "deploy/**", ".github/workflows/e2e.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kind:
+    name: kind cluster + Helm + agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: helm/kind-action@v1
+        with:
+          install_only: true
+      - uses: azure/setup-helm@v5
+
+      - name: deploy/scripts/up.sh
+        run: deploy/scripts/up.sh
+
+      - name: Agent reports to the server
+        run: |
+          kubectl -n finops port-forward svc/finops-server-api 8000:8000 >/dev/null 2>&1 &
+          sleep 5
+          H="X-Admin-Key: kind-local-admin-key"
+          for i in $(seq 1 60); do
+            cluster=$(curl -fsS -H "$H" localhost:8000/api/v1/clusters \
+              | jq -c '.[] | select(.name == "kind-local") | select(.last_seen_at != null)')
+            if [ -n "$cluster" ]; then echo "agent reported: $cluster"; break; fi
+            sleep 10
+          done
+          [ -n "$cluster" ] || { echo "agent never reported"; exit 1; }
+          id=$(echo "$cluster" | jq -r .id)
+          # Inventory from the real cluster: the 4 kind nodes (one labelled spot) and the
+          # demo workloads. Costs are allocated per *complete* hour, so a fresh cluster
+          # has none for up to an hour; the allocation itself is covered by unit tests.
+          for i in $(seq 1 30); do
+            summary=$(curl -fsS -H "$H" "localhost:8000/api/v1/clusters/$id/summary" || true)
+            echo "$summary" | jq -e '.nodes == 4 and .spot_nodes == 1 and .workloads >= 6' >/dev/null 2>&1 && break
+            sleep 10
+          done
+          echo "$summary" | jq .
+          echo "$summary" | jq -e '.nodes == 4 and .spot_nodes == 1 and .workloads >= 6 and .monthly_run_rate > 0' >/dev/null
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl -n finops logs deploy/finops-agent-agent --tail=100 || true
+          kubectl -n finops logs deploy/finops-server-api -c api --tail=100 || true
+          kubectl -n finops logs deploy/finops-server-worker --tail=100 || true

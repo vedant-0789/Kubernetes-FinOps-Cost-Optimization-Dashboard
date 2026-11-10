@@ -4,7 +4,7 @@ There are four ways to run KubeFinOps, from quickest to most production-like:
 
 | Option | What you get | Needs |
 | :--- | :--- | :--- |
-| [1. Local dev](#1-local-development) | API + UI with a synthetic demo cluster, SQLite | Python 3.11+, Node 20+ |
+| [1. Local dev](#1-local-development) | API + UI with a synthetic demo cluster, SQLite | Python 3.11+, Node 22+ |
 | [2. docker compose](#2-docker-compose) | Full server stack (TimescaleDB, API, worker, UI), demo cluster | Docker |
 | [3. kind cluster](#3-local-kubernetes-kind) | Everything on a 4-node Kubernetes cluster: Prometheus, Helm charts, a real agent and real demo workloads | Docker, kind, kubectl, helm |
 | [4. Production](#4-production-eks--gke--aks--on-prem) | Helm install on EKS / GKE / AKS / on-prem, one agent per cluster | A cluster, managed PostgreSQL with TimescaleDB (or the bundled one) |
@@ -85,7 +85,9 @@ kubectl -n finops port-forward svc/finops-server-api 8000:8000       # http://lo
 ```
 
 * Sign in with the local-only account in `deploy/kind/server-values.yaml`.
-* Real data appears after about 15 minutes, and right-sizing needs a few hours of history to become confident.
+* Nodes, workloads and usage appear within minutes. Costs are allocated per complete hour, so the first
+  costs appear after the next full hour. Right-sizing needs at least a day of history (full confidence after
+  7 days); the demo script's live parts work on the synthetic cluster meanwhile.
   The synthetic `demo-aws-prod` cluster is kept alongside for a full picture straight away.
 * Tear down with `kind delete cluster --name kubefinops`.
 

@@ -34,6 +34,7 @@ kubectl -n finops rollout status deploy/finops-server-api --timeout 5m
 step "Register this cluster"
 TOKEN=$(kubectl -n finops exec -i deploy/finops-server-api -c api -- \
   env FINOPS_ADMIN_API_KEY="$ADMIN_KEY" python - kind-local aws us-east-1 < "$ROOT/deploy/scripts/register_cluster.py" | tail -n1)
+[[ -n "$TOKEN" ]] || { echo "cluster registration failed" >&2; exit 1; }
 
 step "finops-agent"
 helm upgrade --install finops-agent "$ROOT/deploy/helm/finops-agent" -n finops \
