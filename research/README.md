@@ -20,6 +20,7 @@ cd research
 pip install -r requirements.txt pytest
 pytest
 python -m kfo_research.experiments                 # 200 containers x 12 strategies, ~2 min on 28 cores
+python -m kfo_research.architecture_fig            # paper/figures/architecture.pdf
 latexmk -pdf -cd paper/main.tex                    # or upload paper/ to Overleaf
 ```
 

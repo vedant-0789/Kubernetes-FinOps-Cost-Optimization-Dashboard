@@ -67,7 +67,7 @@ The project splits naturally into four areas of similar size, one per presenter:
 
 ## Publishing the paper
 
-`research/paper/main.tex` (IEEEtran) is complete apart from the author names and an architecture figure, which
-can be taken from the diagram in `docs/architecture.md`. Build it on Overleaf, or locally with
+`research/paper/main.tex` (IEEEtran) is complete apart from the author names and affiliations (the red
+`	odo{}` marks). Build it on Overleaf, or locally with
 `latexmk -pdf -cd research/paper/main.tex`. Suitable venues are workshop or short-paper tracks on cloud and
 systems: for example IEEE CLOUD workshops, ACM SoCC posters, IEEE/ACM UCC, or a regional IEEE conference.
